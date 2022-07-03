@@ -54,4 +54,4 @@ require('mongoose').connect(
  */
 
 client.login(process.env.TOKEN)
-    .catch((e) => console.log(`[CLIENT]\x1b[31m LOGIN ERROR: ${e}\x1b[0m`))
+    .catch((e) => console.log(`[CLIENT] LOGIN ERROR: ${e}\x1b[0m`))
