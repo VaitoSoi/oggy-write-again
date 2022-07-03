@@ -1,7 +1,7 @@
 const fs = require('node:fs')
 
 module.exports = (client) => {
-    const eventFiles = fs.readdirSync('./events/').filter(file => file.endsWith('.js'));
+    const eventFiles = fs.readdirSync('./discord/events/').filter(file => file.endsWith('.js'));
     
     console.log('[CLIENT]\x1b[33m LOADING EVENTS\x1b[0m');
 

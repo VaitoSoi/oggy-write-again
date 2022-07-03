@@ -23,7 +23,7 @@ client.slash = new Collection()
  * 
  */
 
-require('./handler/event')(client)
+require('./discord/handler/event')(client)
 
 /**
  * 

@@ -7,8 +7,8 @@ module.exports = (client) => {
     const commands = [];
     const commandFiles = []
 
-    fs.readdirSync('./slash_commands/').forEach((dir) => {
-        fs.readdirSync(`./slash_commands/${dir}/`).forEach((file) => {
+    fs.readdirSync('./discord/slash_commands/').forEach((dir) => {
+        fs.readdirSync(`./discord/slash_commands/${dir}/`).forEach((file) => {
             const command = require(`../slash_commands/${dir}/${file}`);
             commands.push(command.data.toJSON());
             client.slash.set(command.data.name, command)

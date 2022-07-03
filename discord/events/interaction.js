@@ -11,7 +11,7 @@ module.exports = {
         const client = interaction.client;
         if (!interaction.isCommand()) return
         const files = [] 
-        fs.readdirSync('./slash_commands/server/').filter(f => f.endsWith('js')).map((f) => f.replace('.js', '')).forEach((file) => {
+        fs.readdirSync('./discord/slash_commands/server/').filter(f => f.endsWith('js')).map((f) => f.replace('.js', '')).forEach((file) => {
             const cmd = require(`../slash_commands/server/${file}`)
             if (!cmd) return
             files.push(cmd.data.name)

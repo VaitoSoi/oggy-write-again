@@ -12,7 +12,7 @@ module.exports = {
     */
     run: async (interaction) => {
         const client = interaction.client
-        const package = require('../../package.json')
+        const package = require('../../../package.json')
         const message = await interaction.followUp({
             embeds: [
                 new MessageEmbed()
@@ -22,7 +22,7 @@ module.exports = {
         })
         let now = Date.now()
         let dbping = 0
-        const data = require('../../models/ping').find()
+        const data = require('../../../models/ping').find()
         await data;
         dbping = Date.now() - now
         async function rate(num) {
