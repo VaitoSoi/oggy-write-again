@@ -8,19 +8,29 @@ const config = {
     pass: env.MINECRAFT_PASS,
 }
 const { Client } = require('discord.js')
-let events = new Object
-let commands = new Object
 
 /**
  * Create mineflayer bot
  * @param {Client} client 
  */
 async function bot(client) {
+    /**
+     * 
+     * Create Bot
+     * 
+     */
     const bot = mineflayer.createBot({
         username: config.username,
         port: config.port,
         host: config.host,
         version: config.version,
     });
-    
+    /**
+     * 
+     * Event Handler
+     * 
+     */
+    bot.client = client
+    bot.login = 0
+    require('./handler/event')(bot)
 }
