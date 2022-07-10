@@ -45,7 +45,7 @@ module.exports = {
                     .setColor('RED')
                     .setDescription(
                         '**Status:** 🔴 Offline\n' +
-                        'Phát hiện lỗi khi kết nối đến server:' +
+                        'Phát hiện lỗi khi lấy dữ liệu từ server:' +
                         '```' + `${e}` + '```'
                     )
             })

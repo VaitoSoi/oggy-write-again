@@ -18,7 +18,7 @@ module.exports = {
          */
         let now = Date.now()
         let dbping = 0
-        const data = require('../../models/ping').find()
+        const data = require('../../../models/ping').find()
         await data;
         dbping = Date.now() - now
         async function rate (num) {
@@ -33,10 +33,11 @@ module.exports = {
             let ping = m.createdTimestamp - interaction.createdTimestamp
             , wsping = client.ws.ping
             m.edit(
-                '**-----Oggy & WS Ping-----**\n' +
+                '**-----Oggy & WS & DB Ping-----**\n' +
                 `Oggy: ${await rate(Number(ping))}\n` +
                 `WS: ${await rate(Number(wsping))}\n` + 
-                `Mongoose: ${await rate(Number(dbping))}`
+                `Mongoose: ${await rate(Number(dbping))}\n` +
+                `-----------------------------`
             )
         })
     }

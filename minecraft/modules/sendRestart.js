@@ -9,7 +9,7 @@ module.exports = (client, time, now) => {
     const db = require('../../models/config')
     client.guilds.cache.forEach(async (guild) => {
         const data = await db.findOne({
-            'guild.id': guild.id
+            'guild_id': guild_id
         })
         if (!data) return
         const channel = guild.channels.cache.get(data.config.channels.restart)

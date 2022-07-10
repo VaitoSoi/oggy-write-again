@@ -1,10 +1,8 @@
 const mongoose = require('mongoose')
 
 let Schema = new mongoose.Schema({
-    guild: {
-        id: String,
-        name: String,
-    },
+    guild_id: String,
+    guild_name: String,
     config: {
         channels: {
             livechat: String,
@@ -18,7 +16,6 @@ let Schema = new mongoose.Schema({
         roles: {
             restart: String,
         },
-        disable: Array,
         chatType: String,
     },
 })

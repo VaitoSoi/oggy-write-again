@@ -12,7 +12,7 @@ module.exports = {
     run (bot, message) {
         const db = require('../../models/option')
         const data = await db.findOne({
-            'guild.id': message.guildId
+            'guild_id': message.guildId
         })
         if (!data) return
         if (message.channelId !== data.config.channels.livechat) return

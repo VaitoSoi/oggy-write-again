@@ -1,6 +1,7 @@
-const { CommandInteraction } = require('discord.js')
+const { CommandInteraction, MessageEmbed } = require('discord.js')
 const { SlashCommandBuilder } = require('@discordjs/builders')
-const { PermissionFlagsBits } = require('discord-api-types/v10')
+const { PermissionFlagsBits, ChannelType } = require('discord-api-types/v10')
+const util = require('minecraft-server-util')
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -16,7 +17,7 @@ module.exports = {
             .setDescription('Chỉnh cài đặt của bot')
             .addSubcommand(sc => sc
                 .setName('channel')
-                .setDescription('Cài 1 channel')
+                .setDescription('Cài đặt một channel')
                 .addStringOption(o => o
                     .setName('type')
                     .setDescription('Loại channel muốn cài')
@@ -39,7 +40,46 @@ module.exports = {
                 .addChannelOption(o => o
                     .setName('channel')
                     .setDescription('Channel muốn cài')
-                    .addChannelTypes(0)
+                    .addChannelTypes(ChannelType.GuildText)
+                    .setRequired(true)
+                )
+            )
+            .addSubcommand(sc => sc
+                .setName('role')
+                .setDescription('Cài đặt một role')
+                .addStringOption(o => o
+                    .setName('type')
+                    .setDescription('Loại role muốn cài')
+                    .addChoices(
+                        {
+                            name: 'restart',
+                            value: 'restart'
+                        }
+                    )
+                    .setRequired(true)
+                )
+                .addRoleOption(o => o
+                    .setName('role')
+                    .setDescription('Role muốn cài')
+                    .setRequired(true)
+                )
+            )
+            .addSubcommand(sc => sc
+                .setName('livechat_type')
+                .setDescription('Chế độ hiển thị livechat')
+                .addStringOption(o => o
+                    .setName('type')
+                    .setDescription('Chế độ muốn dùng')
+                    .addChoices(
+                        {
+                            name: 'embed',
+                            value: 'embed'
+                        },
+                        {
+                            name: 'message',
+                            value: 'message'
+                        }
+                    )
                     .setRequired(true)
                 )
             )
@@ -47,13 +87,283 @@ module.exports = {
         .addSubcommand(scg => scg
             .setName('show')
             .setDescription('Hiển thị cài đặt của bot')
+        )
+        .addSubcommand(scg => scg
+            .setName('delete')
+            .setDescription('Xóa cài đặt của bot')
         ),
     /**
     * 
     * @param {CommandInteraction} interaction 
-    */ 
-    run: async(interaction) => {
+    */
+    run: async (interaction) => {
         const client = interaction.client
-
+        let id = interaction.options.getSubcommand().toLowerCase()
+        let action = null
+        if ([
+            'create',
+            'show',
+            'delete'
+        ].includes(id)) action = id
+        else action = interaction.options.getSubcommandGroup().toLowerCase();
+        const db = require('../../../models/option')
+        let data = await db.findOne({
+            'guild_id': interaction.guildId
+        })
+        if (action == 'create') {
+            if (data)
+                return interaction.editReply('🟡 | Đã có cài đặt!')
+            else {
+                data = new db({
+                    guild_id: interaction.guildId,
+                    guild_name: interaction.guild.name,
+                    config: {
+                        channels: {
+                            livechat: '',
+                            restart: '',
+                            status: ''
+                        },
+                        messages: {
+                            restart: '',
+                            status: '',
+                        },
+                        role: {
+                            restart: ''
+                        },
+                        chatType: 'embed'
+                    }
+                })
+                await data.save()
+                interaction.editReply('✅ | Đã tạo cài đặt')
+            }
+        } else if (action == 'set') {
+            if (!data)
+                return interaction.editReply('🔴 | Không có dữ liệu về cài đặt của bot.\n' +
+                    '🟡 | Dùng lệnh `/config create` để tạo cài đặt')
+            if (id === 'channel') {
+                let set = new Object
+                let type = interaction.options.getString('type')
+                let channel = interaction.options.getChannel('channel')
+                if (!channel.isText()) return
+                if (type === 'livechat') set = {
+                    'config.channel.livechat': channel.id
+                }
+                else if (type === 'restart') set = {
+                    'config.channel.restart': channel.id
+                }
+                else if (type === 'status') set = {
+                    'config.channel.status': channel.id
+                }
+                await db.findOneAndUpdate({
+                    'guild_id': interaction.guildId
+                },
+                    {
+                        $set: set
+                    })
+                if (type == 'status' || type == 'restart') {
+                    try {
+                        channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+                            'SEND_MESSAGES': false,
+                        }, {
+                            reason: 'Oggy set-channel',
+                            type: 0
+                        })
+                        interaction.editReply('✅ | Đã chỉnh role cho `@everyone`')
+                        channel.permissionOverwrites.edit(interaction.guild.me, {
+                            'SEND_MESSAGES': true,
+                            'EMBED_LINKS': true
+                        }, {
+                            reason: 'Oggy set-channel',
+                            type: 1
+                        })
+                        interaction.channel.send('✅ | Đã chỉnh role cho bot').then((msg) => setTimeout(() => {
+                            msg.delete()
+                            interaction.deleteReply()
+                        }, 20 * 1000))
+                    } catch {
+                        interaction.channel.send(`🟡 | Vui lòng khóa kênh ${channel} tránh tình trạng trôi tin nhắn!`)
+                    }
+                }
+                if (type == 'status') {
+                    const embed = new MessageEmbed()
+                        .setAuthor({
+                            name: `${client.user.tag} Server Utils`,
+                            iconURL: client.user.displayAvatarURL()
+                        })
+                        .setTitle(`\`2Y2C\` Status`)
+                        .setFooter({
+                            text: `${interaction.user.tag}`,
+                            iconURL: interaction.user.displayAvatarURL()
+                        })
+                        .setTimestamp()
+                        .setThumbnail(`https://mc-api.net/v3/server/favicon/2y2c.org`)
+                    const now = Date.now()
+                    await util.status('2y2c.org', 25565)
+                        .then((response) => {
+                            const ping = Date.now() - now
+                            embed
+                                .setColor('GREEN')
+                                .setDescription(
+                                    `**Status:** 🟢 Online\n` +
+                                    `**Player:** ${response.players.online}/${response.players.max}\n` +
+                                    `**Version:** ${response.version.name}\n` +
+                                    `**Ping:** ${ping}\n` +
+                                    `**MOTD:** \n>>> ${response.motd.clean}\n`
+                                )
+                        })
+                        .catch(e => {
+                            embed
+                                .setColor('RED')
+                                .setDescription(
+                                    '**Status:** 🔴 Offline\n' +
+                                    'Phát hiện lỗi khi lấy dữ liệu từ server:' +
+                                    '```' + `${e}` + '```'
+                                )
+                        })
+                    let m = await channel.send({
+                        embeds: [embed]
+                    })
+                    m.react('🔁')
+                    data.config.messages.restart = m.id
+                    await data.save()
+                } else if (type == 'restart') {
+                    let send = (role) =>
+                        channel.send(
+                            `Click 📢 để nhận role ${role}.\n` +
+                            `Role sẽ được mention khi có thông báo và khi server restart.\n`
+                        ).then(async (msg) => {
+                            msg.react('📢')
+                            data.config.messages.restart = msg.id
+                            await data.save()
+                        })
+                    let m = await interaction.channel.send(
+                        'Vui lòng chọn 1 trong 2 lựa chọn sau:\n' +
+                        '🟢 | Lấy một role restart có sẵn.\n' +
+                        '🆕 | Tạo một role restart mới'
+                    )
+                    m.react('🟢'); m.react('🆕')
+                    m.createReactionCollector({
+                        time: 5 * 60 * 1000
+                    }).on('collect', async (react, user) => {
+                        if (user.id !== interaction.user.id) return
+                        m.delete()
+                        if (react.emoji.name == '🆕') {
+                            let role = await interaction.guild.roles.create({
+                                name: 'restart-notification',
+                                reason: 'Oggy restart reaction-role',
+                            })
+                            interaction.channel.send(
+                                `✅ | Đã tạo restart-role thành công.\n` +
+                                `ℹ | Thông tin về role:\n` +
+                                `> Tên: ${role}` +
+                                `> ID: ${role.id}`
+                            )
+                            data.config.roles.restart = role.id
+                            await data.save()
+                            send(role)
+                        } else if (react.emoji.name == '🟢') {
+                            let done = false
+                            let msg = await interaction.channel.send('👇 | Vui lòng ghi ID hoặc mention role.')
+                            interaction.channel.createMessageCollector({
+                                time: 5 * 60 * 1000
+                            }).on('collect', async (m) => {
+                                if (m.author.id != interaction.user.id || done) return
+                                let role = null
+                                if (isNaN(m.content)) role = m.mentions.roles.first()
+                                else role = interaction.guild.roles.cache.get(m.content)
+                                m.delete()
+                                if (!role)
+                                    return m.channel.send('🔴 | Không tìm thấy role!')
+                                        .then(msg => setTimeout(() => msg.delete(), 20 * 1000))
+                                msg.delete()
+                                data.config.roles.restart = role.id
+                                await data.save()
+                                interaction.channel.send('✅ | Đã lưu role!')
+                                send(role)
+                                done = true
+                            })
+                        }
+                    })
+                }
+            } else if (id == 'role') {
+                let type = interaction.options.getString('type')
+                let role = interaction.options.getRole('role')
+                let set = {}
+                if (type == 'restart') set = {
+                    'config.roles.restart': role.id
+                }
+                await db.findOneAndUpdate({
+                    guild_id: interaction.guildId
+                }, {
+                    $set: set
+                }).then(() =>
+                    interaction.editReply('✅ | Đã chỉnh role thành công')
+                ).catch(e =>
+                    interaction.editReply(
+                        '🔴 | Xảy ra lỗi trong quá trình chỉnh sửa.\n' +
+                        '```' + e + '```'
+                    )
+                )
+            } else if (id == 'livechat_type') {
+                db.findOneAndUpdate({
+                    guild_id: interaction.guildId
+                }, {
+                    $set: {
+                        'config.chatType': interaction.options.getString('type')
+                    }
+                }).then(() =>
+                    interaction.editReply('✅ | Đã chỉnh chế độ hiển thị thành công')
+                ).catch(e =>
+                    interaction.editReply(
+                        '🔴 | Xảy ra lỗi trong quá trình chỉnh sửa.\n' +
+                        '```' + e + '```'
+                    )
+                )
+            }
+        } else if (action == 'show') {
+            if (!data)
+                return interaction.editReply('🔴 | Không có dữ liệu về cài đặt của bot.\n' +
+                    '🟡 | Dùng lệnh `/config create` để tạo cài đặt')
+            const embed = new MessageEmbed()
+                .setAuthor({
+                    name: `Config Menu`,
+                    iconURL: `https://discord.com/assets/a6d05968d7706183143518d96c9f066e.svg`
+                })
+                .setTitle(`${interaction.guild.name} Config`)
+                .addFields({
+                    name: 'CHANNELS',
+                    value:
+                        '```\n' +
+                        `livechat: ${data.config.channels.livechat}\n` +
+                        `restart: ${data.config.channels.restart}\n` +
+                        `status: ${data.config.channels.status}\n` +
+                        '```',
+                    inline: true
+                }, {
+                    name: 'MESSAGES',
+                    value:
+                        '```\n' +
+                        `restart: ${data.config.messages.restart}\n` +
+                        `status: ${data.config.messages.status}\n` +
+                        '```',
+                    inline: true
+                }, {
+                    name: 'ROLES',
+                    value:
+                        '```\n' +
+                        `restart: ${data.config.roles.restart}\n` +
+                        '```',
+                    inline: false
+                })
+                .setFooter({
+                    text: `${client.user.tag}`,
+                    iconURL: client.user.displayAvatarURL()
+                })
+                .setTimestamp()
+                .setColor('RANDOM')
+            interaction.editReply({
+                embeds: [embed]
+            })
+        }
     }
 } 
