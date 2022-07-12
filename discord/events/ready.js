@@ -3,7 +3,7 @@ const { Client } = require('discord.js')
 module.exports = {
     name:'ready',
     /**
-     * 
+     * Ready event
      * @param {Client} client 
      */
     async run (client) {

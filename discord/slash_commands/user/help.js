@@ -13,11 +13,11 @@ module.exports = {
     run: async (interaction) => {
         const client = interaction.client
 
-        let dirs = fs.readdirSync('./slash_commands/')
+        let dirs = fs.readdirSync('./discord/slash_commands/')
         let categories = []
         let option = []
         dirs.forEach((dir) => {
-            let files = fs.readdirSync(`./slash_commands/${dir}/`).filter(file => file.endsWith('.js'))
+            let files = fs.readdirSync(`./discord/slash_commands/${dir}/`).filter(file => file.endsWith('.js'))
             categories.push({
                 name: dir.toString().toLowerCase(),
                 cmds: files

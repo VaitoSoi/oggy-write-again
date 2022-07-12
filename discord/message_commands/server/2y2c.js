@@ -1,18 +1,17 @@
-const { CommandInteraction, MessageEmbed } = require('discord.js')
-const { SlashCommandBuilder } = require('@discordjs/builders')
-const { Bot } = require('mineflayer')
+const { Client, Message, MessageEmbed } = require('discord.js')
 const util = require('minecraft-server-util')
 
-module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('2y2c')
-        .setDescription('Hiện tất cả các thông tin về 2y2c'),
+module.exports = { 
+    name: '2y2c',
+    description: 'Hiện tất cả thông tin về server 2y2c.org',
+    usage: '',
     /**
     * 
-    * @param {CommandInteraction} interaction 
-    * @param {Bot} minecraftbot
-    */
-    run: async (interaction) => {
+    * @param {Client} client 
+    * @param {Message} message 
+    * @param {String[]} args 
+    */ 
+    run: async(client, message, args) => {
         const embed = new MessageEmbed()
             .setAuthor({
                 name: `${client.user.tag} Server Utils`,
@@ -20,8 +19,8 @@ module.exports = {
             })
             .setTitle(`\`2Y2C\` Status`)
             .setFooter({
-                text: `${interaction.user.tag}`,
-                iconURL: interaction.user.displayAvatarURL()
+                text: `${message.author.tag}`,
+                iconURL: message.author.displayAvatarURL()
             })
             .setTimestamp()
             .setThumbnail(`https://eu.mc-api.net/v3/server/favicon/2y2c.org`)
@@ -48,7 +47,7 @@ module.exports = {
                         '```' + `${e}` + '```'
                     )
             })
-        interaction.editReply({
+        message.reply({
             embeds: [embed]
         })
     }

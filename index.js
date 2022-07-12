@@ -16,6 +16,8 @@ const client = new Client({
  */
 
 client.slash = new Collection()
+client.message = new Collection()
+client.aliases = new Collection()
 
 /**
  * 
@@ -24,6 +26,7 @@ client.slash = new Collection()
  */
 
 require('./discord/handler/event')(client)
+require('./discord/handler/message')(client)
 
 /**
  * 

@@ -2,7 +2,12 @@ const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 const token = process.env.TOKEN
 const fs = require('node:fs');
+const { Client } = require('discord.js')
 
+/**
+ * Slash handler
+ * @param {Client} client 
+ */
 module.exports = (client) => {
     const commands = [];
     const commandFiles = []

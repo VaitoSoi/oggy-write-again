@@ -1,4 +1,10 @@
 const fs = require('node:fs')
+const { Client } = require('discord.js')
+
+/**
+ * Event handler
+ * @param {Client} client 
+ */
 
 module.exports = (client) => {
     const eventFiles = fs.readdirSync('./discord/events/').filter(file => file.endsWith('.js'));
