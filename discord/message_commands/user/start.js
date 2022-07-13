@@ -74,8 +74,11 @@ module.exports = {
             filter: msg => msg.author.id === message.author.id
         }).on('collect', async (msg) => {
             msg.delete()
-            if (msg.content.toLowerCase() == 'no') return
-            if (now == 'channel') {
+            if (msg.content.toLowerCase() == 'no') {
+                if (type === 'livechat') type = ' restart'
+                else if (type === 'restart') type === 'status'
+                else if (type === 'status') { type = ''; now = 'role' }
+            } else if (now == 'channel') {
                 let channel
                 if (isNaN(args[4])) channel = msg.mentions.channels.first()
                 else channel = msg.guild.channels.cache.get(msg.content)
@@ -93,7 +96,7 @@ module.exports = {
                 } else if (type === 'status') {
                     set = {
                         'config.channel.status': channel.id
-                    }; type = ''
+                    }; now = 'role'; type = ''
                 }
                 await db.findOneAndUpdate({
                     'guild_id': message.guildId
@@ -102,8 +105,137 @@ module.exports = {
                         $set: set
                     })
                 m.delete()
+                const util = require('minecraft-server-util')
+                if (type == 'status' || type == 'restart') {
+                    try {
+                        channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+                            'SEND_MESSAGES': false,
+                        }, {
+                            reason: 'Oggy set-channel',
+                            type: 0
+                        })
+                        message.reply('✅ | Đã chỉnh role cho `@everyone`').then((msg) => setTimeout(() => {
+                            msg.delete()
+                        }, 20 * 1000))
+                        channel.permissionOverwrites.edit(message.guild.me, {
+                            'SEND_MESSAGES': true,
+                            'EMBED_LINKS': true
+                        }, {
+                            reason: 'Oggy set-channel',
+                            type: 1
+                        })
+                        message.channel.send('✅ | Đã chỉnh role cho bot').then((msg) => setTimeout(() => {
+                            msg.delete()
+                        }, 20 * 1000))
+                    } catch {
+                        message.channel.send(`🟡 | Vui lòng khóa kênh ${channel} tránh tình trạng trôi tin nhắn!`)
+                    }
+                }
+                if (type == 'status') {
+                    const embed = new MessageEmbed()
+                        .setAuthor({
+                            name: `${client.user.tag} Server Utils`,
+                            iconURL: client.user.displayAvatarURL()
+                        })
+                        .setTitle(`\`2Y2C\` Status`)
+                        .setFooter({
+                            text: `${message.author.tag}`,
+                            iconURL: message.author.displayAvatarURL()
+                        })
+                        .setTimestamp()
+                        .setThumbnail(`https://mc-api.net/v3/server/favicon/2y2c.org`)
+                    const now = Date.now()
+                    await util.status('2y2c.org', 25565)
+                        .then((response) => {
+                            const ping = Date.now() - now
+                            embed
+                                .setColor('GREEN')
+                                .setDescription(
+                                    `**Status:** 🟢 Online\n` +
+                                    `**Player:** ${response.players.online}/${response.players.max}\n` +
+                                    `**Version:** ${response.version.name}\n` +
+                                    `**Ping:** ${ping}\n` +
+                                    `**MOTD:** \n>>> ${response.motd.clean}\n`
+                                )
+                        })
+                        .catch(e => {
+                            embed
+                                .setColor('RED')
+                                .setDescription(
+                                    '**Status:** 🔴 Offline\n' +
+                                    'Phát hiện lỗi khi lấy dữ liệu từ server:' +
+                                    '```' + `${e}` + '```'
+                                )
+                        })
+                    let m = await channel.send({
+                        embeds: [embed]
+                    })
+                    m.react('🔁')
+                    data.config.messages.restart = m.id
+                    await data.save()
+                } else if (type == 'restart') {
+                    let send = (role) =>
+                        channel.send(
+                            `Click 📢 để nhận role ${role}.\n` +
+                            `Role sẽ được mention khi có thông báo và khi server restart.\n`
+                        ).then(async (msg) => {
+                            msg.react('📢')
+                            data.config.messages.restart = msg.id
+                            await data.save()
+                        })
+                    let m = await message.channel.send(
+                        'Vui lòng chọn 1 trong 2 lựa chọn sau:\n' +
+                        '🟢 | Lấy một role restart có sẵn.\n' +
+                        '🆕 | Tạo một role restart mới'
+                    )
+                    m.react('🟢'); m.react('🆕')
+                    m.createReactionCollector({
+                        time: 5 * 60 * 1000
+                    }).on('collect', async (react, user) => {
+                        if (user.id !== message.author.id) return
+                        m.delete()
+                        if (react.emoji.name == '🆕') {
+                            let role = await message.guild.roles.create({
+                                name: 'restart-notification',
+                                reason: 'Oggy restart reaction-role',
+                            })
+                            message.channel.send(
+                                `✅ | Đã tạo restart-role thành công.\n` +
+                                `ℹ | Thông tin về role:\n` +
+                                `> Tên: ${role}` +
+                                `> ID: ${role.id}`
+                            )
+                            data.config.roles.restart = role.id
+                            await data.save()
+                            send(role)
+                        } else if (react.emoji.name == '🟢') {
+                            let done = false
+                            let msg = await message.channel.send('👇 | Vui lòng ghi ID hoặc mention role.')
+                            message.channel.createMessageCollector({
+                                time: 5 * 60 * 1000
+                            }).on('collect', async (m) => {
+                                if (m.author.id != message.author.id || done) return
+                                let role = null
+                                if (isNaN(m.content)) role = m.mentions.roles.first()
+                                else role = message.guild.roles.cache.get(m.content)
+                                m.delete()
+                                if (!role)
+                                    return m.channel.send('🔴 | Không tìm thấy role!')
+                                        .then(msg => setTimeout(() => msg.delete(), 20 * 1000))
+                                msg.delete()
+                                data.config.roles.restart = role.id
+                                await data.save()
+                                message.channel.send('✅ | Đã lưu role!')
+                                send(role)
+                                done = true
+                            })
+                        }
+                    })
+                }
                 if (type != '') m = await message.channel.send(`👇 Vui lòng nhập ID hoặc tags kênh ${type}.\nGhi \`NO\` để bỏ qua`)
-                else m = await message.channel.send(`👇 Vui lòng nhập ID hoặc tags kênh ${type}.\nGhi \`NO\` để bỏ qua`)
+                else m = await message.channel.send(`👇 Vui lòng nhập ID hoặc tags role restart.\nGhi \`NO\` để bỏ qua`)
+            } else if (now == 'role') {
+
             }
         })
     }
