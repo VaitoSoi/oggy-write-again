@@ -4,6 +4,7 @@ const Discord = require('discord.js')
  * Send to all server
  * @param {Discord.Client} client 
  * @param {Discord.MessageEmbed} embed 
+ * @param {Boolean} now
  */
 module.exports = (client, time, now) => {
     const db = require('../../models/config')
