@@ -96,25 +96,12 @@ module.exports = {
                     }
                 }
             } else if (now == 'channel') {
-                let channel, set = {}
+                let channel, set = {}, done = false
                 if (isNaN(args[4])) channel = msg.mentions.channels.first()
                 else channel = msg.guild.channels.cache.get(msg.content)
                 if (!channel.isText()) return msg.channel.send(`🔴 | <#${channel.id}> phải là một kênh văn bản !`).then((m1) => setTimeout(() => {
                     m1.delete()
                 }, 10 * 1000))
-                if (type == 'livechat') {
-                    set = {
-                        'config.channel.livechat': channel.id
-                    }; type = 'restart'
-                } else if (type == 'restart') {
-                    set = {
-                        'config.channel.restart': channel.id
-                    }; type = 'status'
-                } else if (type == 'status') {
-                    set = {
-                        'config.channel.status': channel.id
-                    }; type = ''; now = 'message'
-                }
                 await db.findOneAndUpdate({ 'guild_id': message.guildId }, { $set: set })
                 m.delete()
                 const util = require('minecraft-server-util')
@@ -194,6 +181,7 @@ module.exports = {
                             msg.react('📢')
                             data.config.messages.restart = msg.id
                             await data.save()
+                            done = true
                         })
                     let m = await message.channel.send(
                         'Vui lòng chọn 1 trong 2 lựa chọn sau:\n' +
@@ -244,6 +232,22 @@ module.exports = {
                         }
                     })
                 }
+                if (type == 'livechat') {
+                    set = {
+                        'config.channel.livechat': channel.id
+                    }; type = 'restart'
+                } else if (type == 'restart') {
+                    set = {
+                        'config.channel.restart': channel.id
+                    }; type = 'status'
+                } else if (type == 'status') {
+                    set = {
+                        'config.channel.status': channel.id
+                    }; type = ''; now = 'message'
+                }
+                setInterval(() => {
+                    
+                })
                 if (type != '') m = await message.channel.send(`👇 Vui lòng nhập ID hoặc tags kênh \`${type}\`.\nGhi \`NO\` để bỏ qua`)
                 else if (type == '' && now == 'message') {
                     message.channel.send('> Tiếp theo là dạng hiển thị tin nhắn')
