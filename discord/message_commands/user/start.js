@@ -1,4 +1,5 @@
 const { Client, Message, MessageEmbed } = require('discord.js')
+const wait = require('node:timers/promises').setTimeout
 
 module.exports = {
     name: 'start',
@@ -12,7 +13,7 @@ module.exports = {
     */
     run: async (client, message, args) => {
         message.channel.send('👋 OggyTheBot xin chào, đây là các bước khởi đầu của bot.')
-        message.channel.send('1️⃣ Đầu tiên hãy kiểm tra và thiết lập các thứ cơ bản cho bot (tự động).')
+        message.channel.send('1️⃣ Trước hết, hãy kiểm tra và thiết lập các thứ cơ bản cho bot (tự động).')
         let perm = true
         message.channel.send('⏳ Bot đang kiểm tra các quyền cần thiết...').then((msg) => {
             let send = true,
@@ -33,13 +34,14 @@ module.exports = {
             }
         })
         if (!perm) return
-        message.channel.send('⏳ Đang tạo cài đặt cho bot...').then((msg) => {
-            const db = require('../../../models/option')
-            let data = await db.findOne({
-                'guild_id': message.guildId
-            })
+        await wait(1000)
+        const db = require('../../../models/option')
+        let data = await db.findOne({
+            'guild_id': message.guildId
+        })
+        message.channel.send('⏳ Đang tạo cài đặt cho bot...').then(async (msg) => {
             if (data)
-                return msg.edit('🟡 | Đã có cài đặt!')
+                return msg.edit('✅ Cài đặt đã có sẳn!')
             else {
                 data = new db({
                     guild_id: message.guildId,
@@ -65,45 +67,55 @@ module.exports = {
                 msg.edit('✅ | Đã tạo cài đặt')
             }
         })
+        await wait(1000)
         message.channel.send('2️⃣ Chỉnh sửa một vào thứ.')
+        message.channel.send('> Đầu tiên là các kênh văn bản')
         let type = '', now = ''
-        let m = await message.channel.send('👇 Vui lòng nhập ID hoặc tags kênh livechat.\nGhi `NO` để bỏ qua')
         type = 'livechat'; now = 'channel'
+        let m = await message.channel.send('👇 Vui lòng nhập ID hoặc tags kênh `livechat`.\nGhi `NO` hoặc `SKIP` để bỏ qua')
         message.channel.createMessageCollector({
             time: 5 * 60 * 1000,
             filter: msg => msg.author.id === message.author.id
         }).on('collect', async (msg) => {
             msg.delete()
-            if (msg.content.toLowerCase() == 'no') {
-                if (type === 'livechat') type = ' restart'
-                else if (type === 'restart') type === 'status'
-                else if (type === 'status') { type = ''; now = 'role' }
+            if (msg.content.toLowerCase() == 'no' || msg.content.toLowerCase() == 'skip') {
+                m.delete()
+                if (now == 'channel') {
+                    if (type === 'livechat') type = 'restart'
+                    else if (type === 'restart') type = 'status'
+                    else if (type === 'status') { type = ''; now = 'message' }
+                    if (type != '') m = await message.channel.send(`👇 Vui lòng nhập ID hoặc tags kênh \`${type}\`.\nGhi \`NO\` để bỏ qua`)
+                    else if (type == '' && now == 'message') {
+                        message.channel.send('> Tiếp theo là dạng hiển thị tin nhắn')
+                        m = await message.channel.send(
+                            '👇 Hãy chọn một trong hai lựa chọn dưới đây:\n' +
+                            '> 1️⃣ Embed (mặc định)\n' +
+                            '> 2️⃣ Message\n' +
+                            'Ghi `NO` hoặc `SKIP` để sử dụng mặc định'
+                        )
+                    }
+                }
             } else if (now == 'channel') {
-                let channel
+                let channel, set = {}
                 if (isNaN(args[4])) channel = msg.mentions.channels.first()
                 else channel = msg.guild.channels.cache.get(msg.content)
                 if (!channel.isText()) return msg.channel.send(`🔴 | <#${channel.id}> phải là một kênh văn bản !`).then((m1) => setTimeout(() => {
                     m1.delete()
                 }, 10 * 1000))
-                if (type === 'livechat') {
+                if (type == 'livechat') {
                     set = {
                         'config.channel.livechat': channel.id
-                    }; type = ' restart'
-                } else if (type === 'restart') {
+                    }; type = 'restart'
+                } else if (type == 'restart') {
                     set = {
                         'config.channel.restart': channel.id
-                    }; type === 'status'
-                } else if (type === 'status') {
+                    }; type = 'status'
+                } else if (type == 'status') {
                     set = {
                         'config.channel.status': channel.id
-                    }; now = 'role'; type = ''
+                    }; type = ''; now = 'message'
                 }
-                await db.findOneAndUpdate({
-                    'guild_id': message.guildId
-                },
-                    {
-                        $set: set
-                    })
+                await db.findOneAndUpdate({ 'guild_id': message.guildId }, { $set: set })
                 m.delete()
                 const util = require('minecraft-server-util')
                 if (type == 'status' || type == 'restart') {
@@ -202,7 +214,7 @@ module.exports = {
                             message.channel.send(
                                 `✅ | Đã tạo restart-role thành công.\n` +
                                 `ℹ | Thông tin về role:\n` +
-                                `> Tên: ${role}` +
+                                `> Tên: ${role}\n` +
                                 `> ID: ${role.id}`
                             )
                             data.config.roles.restart = role.id
@@ -232,10 +244,20 @@ module.exports = {
                         }
                     })
                 }
-                if (type != '') m = await message.channel.send(`👇 Vui lòng nhập ID hoặc tags kênh ${type}.\nGhi \`NO\` để bỏ qua`)
-                else m = await message.channel.send(`👇 Vui lòng nhập ID hoặc tags role restart.\nGhi \`NO\` để bỏ qua`)
-            } else if (now == 'role') {
-
+                if (type != '') m = await message.channel.send(`👇 Vui lòng nhập ID hoặc tags kênh \`${type}\`.\nGhi \`NO\` để bỏ qua`)
+                else if (type == '' && now == 'message') {
+                    message.channel.send('> Tiếp theo là dạng hiển thị tin nhắn')
+                    m = await message.channel.send(
+                        '👇 Hãy chọn một trong hai lựa chọn dưới đây:\n' +
+                        '> 1️⃣ Embed (mặc định)\n' +
+                        '> 2️⃣ Message\n' +
+                        'Ghi `NO` hoặc `SKIP` để sử dụng mặc định'
+                    )
+                }
+            } else if (now == 'message') {
+                if (msg.content.toLowerCase() != 'embed' && msg.content.toLowerCase() != 'message') return msg.reply('🔴 Lựa chọn không hợp lệ!')
+                data.config.chatType = msg.content.toLowerCase()
+                await data.save()
             }
         })
     }
