@@ -1,8 +1,8 @@
 const mongoose = require('mongoose')
 
 let Schema = new mongoose.Schema({
-    guild_id: String,
-    guild_name: String,
+    guildid: String,
+    guildname: String,
     config: {
         channels: {
             livechat: String,
@@ -18,7 +18,7 @@ let Schema = new mongoose.Schema({
         },
         chatType: String,
         prefix: String,
-    },
+    }
 })
 
 module.exports = mongoose.model('option', Schema)

@@ -9,15 +9,16 @@ module.exports = {
      * @param {mineflayer.Bot} bot 
      * @param {Discord.Message} message 
      */
-    run (bot, message) {
+    async run (bot, message) {
+        if (message.author.bot) return
         const db = require('../../models/option')
         const data = await db.findOne({
-            'guild_id': message.guildId
+            'guildid': message.guildId
         })
         if (!data) return
         if (message.channelId !== data.config.channels.livechat) return
         try {
-            bot.chat(`<${message.author.tag}> ${message.content.trim}`)
+            bot.chat(`<${message.author.tag}> ${message.content.trim()}`)
             message.react('✅')
         } catch (e) {
             message.react('🛑')

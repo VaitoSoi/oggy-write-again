@@ -4,12 +4,13 @@ const Discord = require('discord.js')
  * Send to all server
  * @param {Discord.Client} client 
  * @param {Discord.MessageEmbed} embed 
+ * @param {Boolean} notify
  */
-module.exports = (client, embed) => {
-    const db = require('../../models/config')
+module.exports = (client, embed, notify) => {
+    const db = require('../../models/option')
     client.guilds.cache.forEach(async (guild) => {
         const data = await db.findOne({
-            'guild_id': guild_id
+            'guildid': guild.id
         })
         if (!data) return
         const channel = guild.channels.cache.get(data.config.channels.livechat)
@@ -22,9 +23,17 @@ module.exports = (client, embed) => {
                 ]
             })
         else channel.send(
-            embed.description ?
-                embed.description
-                : embed.title
+            notify == true
+                ? embed.description
+                    ? `\`--------------------------\`\n` +
+                    `${embed.description.split('\n').map(str => '**Notify »** ' + str).join('\n')}\n` +
+                    `\`--------------------------\``
+                    :`\`--------------------------\`\n` +
+                    `${embed.title.split('\n').map(str => '**Notify »** ' + str).join('\n')}` + 
+                    `\`--------------------------\``
+                : embed.description
+                    ? embed.description
+                    : embed.title
         )
     })
 }

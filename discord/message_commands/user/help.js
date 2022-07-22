@@ -128,7 +128,7 @@ module.exports = {
             let prefix = process.env.prefix
             const db = require('../../../models/option')
             const data = await db.findOne({
-                guild_id: message.guildId
+                guildid: message.guildId
             })
             if (data
                 && data.config.prefix

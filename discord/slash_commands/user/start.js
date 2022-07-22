@@ -1,27 +1,27 @@
-const { Client, Message, MessageEmbed } = require('discord.js')
+const { CommandInteraction, MessageEmbed } = require('discord.js')
+const { SlashCommandBuilder } = require('@discordjs/builders')
 const wait = require('node:timers/promises').setTimeout
 
 module.exports = {
-    name: 'start',
-    description: 'Bắt đầu mọi thứ',
-    usage: '',
+    data: new SlashCommandBuilder()
+        .setName('start')
+        .setDescription('Bắt đầu e vơ ry thinh'),
     /**
     * 
-    * @param {Client} client 
-    * @param {Message} message 
-    * @param {String[]} args 
-    */
-    run: async (client, message, args) => {
-        message.channel.send('👋 OggyTheBot xin chào, đây là các bước khởi đầu của bot.')
-        message.channel.send('1️⃣ Trước hết, hãy kiểm tra và thiết lập các thứ cơ bản cho bot (tự động).')
+    * @param {CommandInteraction} interaction 
+    */ 
+    run: async(interaction) => {
+        const client = interaction.client
+        interaction.editReply('👋 OggyTheBot xin chào, đây là các bước khởi đầu của bot.')
+        interaction.channel.send('1️⃣ Trước hết, hãy kiểm tra và thiết lập các thứ cơ bản cho bot (tự động).')
         let perm = true
-        message.channel.send('⏳ Bot đang kiểm tra các quyền cần thiết...').then((msg) => {
+        interaction.channel.send('⏳ Bot đang kiểm tra các quyền cần thiết...').then((msg) => {
             let send = true,
                 embed = true,
                 react = true
-            if (!message.guild.me.permissions.has('SEND_MESSAGES')) send = false
-            if (!message.guild.me.permissions.has('EMBED_LINKS')) embed = false
-            if (!message.guild.me.permissions.has('ADD_REACTIONS')) react = false
+            if (!interaction.guild.me.permissions.has('SEND_MESSAGES')) send = false
+            if (!interaction.guild.me.permissions.has('EMBED_LINKS')) embed = false
+            if (!interaction.guild.me.permissions.has('ADD_REACTIONS')) react = false
             if (send && embed && react) msg.edit('✅ Bot đã được cấp đủ quyền')
             else {
                 msg.edit(
@@ -34,10 +34,10 @@ module.exports = {
             }
         })
         if (!perm) return
-        await wait(2 * 1000)
+        await wait(1 * 1000)
         const db = require('../../../models/option')
         let data = await db.findOne({
-            'guildid': message.guildId
+            'guildid': interaction.guildId
         })
         const embedImageLink = 'https://cdn.discordapp.com/attachments/936994104884224020/997858841351962707/unknown.png'
         const messageImageLink = 'https://cdn.discordapp.com/attachments/936994104884224020/997859375790174289/unknown.png'
@@ -82,13 +82,13 @@ module.exports = {
                 done = true
             })
         }
-        message.channel.send('⏳ Đang tạo cài đặt cho bot...').then(async (msg) => {
+        interaction.channel.send('⏳ Đang tạo cài đặt cho bot...').then(async (msg) => {
             if (data)
                 return msg.edit('✅ Đã có cài đặt sẵn!')
             else {
                 data = new db({
-                    guildid: message.guildId,
-                    guildname: message.guild.name,
+                    guildid: interaction.guildId,
+                    guildname: interaction.guild.name,
                     config: {
                         channels: {
                             livechat: '',
@@ -110,15 +110,15 @@ module.exports = {
                 msg.edit('✅ | Đã tạo cài đặt')
             }
         })
-        await wait(2 * 1000)
-        message.channel.send('2️⃣ Chỉnh sửa một vài thứ liên quan đến cài đặt của Ót gy.')
-        message.channel.send('> Đầu tiên là các kênh văn bản')
+        await wait(1 * 1000)
+        interaction.channel.send('2️⃣ Chỉnh sửa một vài thứ liên quan đến cài đặt của Ót gy.')
+        interaction.channel.send('> Đầu tiên là các kênh văn bản')
         let type = '', now = '', restartChannel
         type = 'livechat'; now = 'channel'
-        let m = await message.channel.send('👇 Vui lòng nhập ID hoặc tags kênh `livechat`.\nGhi `NO` hoặc `SKIP` để bỏ qua')
-        message.channel.createMessageCollector({
+        let m = await interaction.channel.send('👇 Vui lòng nhập ID hoặc tags kênh `livechat`.\nGhi `NO` hoặc `SKIP` để bỏ qua')
+        interaction.channel.createMessageCollector({
             time: 5 * 60 * 1000,
-            filter: msg => msg.author.id === message.author.id
+            filter: msg => msg.author.id === interaction.user.id
         }).on('collect', async (msg) => {
             msg.delete()
             if (msg.content.toLowerCase() == 'no' || msg.content.toLowerCase() == 'skip') {
@@ -200,8 +200,8 @@ module.exports = {
                         })
                         .setTitle(`\`2Y2C\` Status`)
                         .setFooter({
-                            text: `${message.author.tag}`,
-                            iconURL: message.author.displayAvatarURL()
+                            text: `${interaction.user.tag}`,
+                            iconURL: interaction.user.displayAvatarURL()
                         })
                         .setTimestamp()
                         .setThumbnail(`https://mc-api.net/v3/server/favicon/2y2c.org`)
@@ -244,7 +244,7 @@ module.exports = {
                     m.react('🟢'); m.react('🆕')
                     m.createReactionCollector({
                         time: 5 * 60 * 1000,
-                        filter: (reaction, user) => user.id === message.author.id
+                        filter: (reaction, user) => user.id === interaction.user.id
                     }).on('collect', async (react, user) => {
                         m.delete()
                         if (react.emoji.name == '🆕') {

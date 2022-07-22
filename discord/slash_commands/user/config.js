@@ -108,15 +108,15 @@ module.exports = {
         else action = interaction.options.getSubcommandGroup().toLowerCase();
         const db = require('../../../models/option')
         let data = await db.findOne({
-            'guild_id': interaction.guildId
+            'guildid': interaction.guildId
         })
         if (action == 'create') {
             if (data)
                 return interaction.editReply('🟡 | Đã có cài đặt!')
             else {
                 data = new db({
-                    guild_id: interaction.guildId,
-                    guild_name: interaction.guild.name,
+                    guildid: interaction.guildId,
+                    guildname: interaction.guild.name,
                     config: {
                         channels: {
                             livechat: '',
@@ -146,21 +146,11 @@ module.exports = {
                 let type = interaction.options.getString('type')
                 let channel = interaction.options.getChannel('channel')
                 if (!channel.isText()) return
-                if (type === 'livechat') set = {
-                    'config.channel.livechat': channel.id
-                }
-                else if (type === 'restart') set = {
-                    'config.channel.restart': channel.id
-                }
-                else if (type === 'status') set = {
-                    'config.channel.status': channel.id
-                }
-                await db.findOneAndUpdate({
-                    'guild_id': interaction.guildId
-                },
-                    {
-                        $set: set
-                    })
+                if (type === 'livechat') data.config.channels.livechat = channel.id
+                else if (type === 'restart')  data.config.channels.restart = channel.id
+                else if (type === 'status') data.config.channels.status = channel.id
+                await data.save()
+                interaction.editReply(`✅ | Đã chỉnh config thành công`)
                 if (type == 'status' || type == 'restart') {
                     try {
                         channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
@@ -169,7 +159,10 @@ module.exports = {
                             reason: 'Oggy set-channel',
                             type: 0
                         })
-                        interaction.editReply('✅ | Đã chỉnh role cho `@everyone`')
+                        interaction.channel.send('✅ | Đã chỉnh role cho `@everyone`').then((msg) => setTimeout(() => {
+                            msg.delete()
+                            interaction.deleteReply()
+                        }, 10 * 1000))
                         channel.permissionOverwrites.edit(interaction.guild.me, {
                             'SEND_MESSAGES': true,
                             'EMBED_LINKS': true
@@ -180,7 +173,7 @@ module.exports = {
                         interaction.channel.send('✅ | Đã chỉnh role cho bot').then((msg) => setTimeout(() => {
                             msg.delete()
                             interaction.deleteReply()
-                        }, 20 * 1000))
+                        }, 10 * 1000))
                     } catch {
                         interaction.channel.send(`🟡 | Vui lòng khóa kênh ${channel} tránh tình trạng trôi tin nhắn!`)
                     }
@@ -294,7 +287,7 @@ module.exports = {
                     'config.roles.restart': role.id
                 }
                 await db.findOneAndUpdate({
-                    guild_id: interaction.guildId
+                    guildid: interaction.guildId
                 }, {
                     $set: set
                 }).then(() =>
@@ -307,7 +300,7 @@ module.exports = {
                 )
             } else if (id == 'livechat_type') {
                 db.findOneAndUpdate({
-                    guild_id: interaction.guildId
+                    guildid: interaction.guildId
                 }, {
                     $set: {
                         'config.chatType': interaction.options.getString('type')
@@ -367,7 +360,7 @@ module.exports = {
             })
         } else if (action == 'delete') {
             await db.findOneAndDelete({
-                'guild_id': interaction.guildId
+                'guildid': interaction.guildId
             })
             interaction.editReply('🟢 | Đã xóa thành công.')
         }

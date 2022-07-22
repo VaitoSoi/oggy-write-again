@@ -7,10 +7,10 @@ const Discord = require('discord.js')
  * @param {Boolean} now
  */
 module.exports = (client, time, now) => {
-    const db = require('../../models/config')
+    const db = require('../../models/option')
     client.guilds.cache.forEach(async (guild) => {
         const data = await db.findOne({
-            'guild_id': guild_id
+            'guildid': guild.id
         })
         if (!data) return
         const channel = guild.channels.cache.get(data.config.channels.restart)
@@ -18,16 +18,22 @@ module.exports = (client, time, now) => {
         if (!guild.me.permissionsIn(channel).has('SEND_MESSAGES')) return
         const role = guild.roles.cache.get(data.config.roles.restart)
         if (!role) return
+        (await channel.messages.fetch()).forEach((msg) => {
+            if (msg.id === data.config.messages.restart) return
+            if (msg.author.id !== client.user.id) return
+            if ((Date.now() - msg.createdTimestamp) < 31 * 60 * 1000) return
+            msg.delete().catch((e) => { })
+        })
         if (!now) channel.send({
             content: `${role} | Server sẽ khởi động trong vòng ${time} nữa...`,
             allowedMentions: {
-                roles: [role]
+                parse: ['roles']
             }
         })
         else channel.send({
             content: `${role} | Server đang khởi động lại...`,
             allowedMentions: {
-                roles: [role]
+                parse: ['roles']
             }
         })
     })

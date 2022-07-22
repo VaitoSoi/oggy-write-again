@@ -27,15 +27,15 @@ module.exports = {
         )
         const db = require('../../../models/option')
         let data = await db.findOne({
-            'guild_id': message.guildId
+            'guildid': message.guildId
         })
         if (action == 'create') {
             if (data)
                 return message.reply('🟡 | Đã có cài đặt!')
             else {
                 data = new db({
-                    guild_id: message.guildId,
-                    guild_name: message.guild.name,
+                    guildid: message.guildId,
+                    guildname: message.guild.name,
                     config: {
                         channels: {
                             livechat: '',
@@ -77,7 +77,7 @@ module.exports = {
                     'config.channel.status': channel.id
                 }
                 await db.findOneAndUpdate({
-                    'guild_id': message.guildId
+                    'guildid': message.guildId
                 },
                     {
                         $set: set
@@ -217,7 +217,7 @@ module.exports = {
                     'config.roles.restart': role.id
                 }
                 await db.findOneAndUpdate({
-                    guild_id: message.guildId
+                    guildid: message.guildId
                 }, {
                     $set: set
                 }).then(() =>
@@ -230,7 +230,7 @@ module.exports = {
                 )
             } else if (id == 'livechat_type') {
                 db.findOneAndUpdate({
-                    guild_id: message.guildId
+                    guildid: message.guildId
                 }, {
                     $set: {
                         'config.chatType': args[3]
@@ -290,7 +290,7 @@ module.exports = {
             })
         } else if (action == 'delete') {
             await db.findOneAndDelete({
-                'guild_id': message.guildId
+                'guildid': message.guildId
             })
             message.reply('🟢 | Đã xóa thành công.')
         }

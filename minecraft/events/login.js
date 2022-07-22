@@ -18,8 +18,8 @@ module.exports = {
             sv = 'MAIN'; botlogin = 0
         }
         chat(bot.client, new MessageEmbed()
-            .setDescription(`**Notify » Bot đã vào cụm \`${sv}\`**`)
-            .setColor(color.green)
+            .setDescription(`**Bot đã vào cụm \`${sv}\`**`)
+            .setColor(color.green), true
         )
     }
 }

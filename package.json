@@ -20,6 +20,8 @@
     "dotenv": "^16.0.1",
     "minecraft-server-util": "^5.2.10",
     "mineflayer": "^4.3.0",
-    "mongoose": "^6.4.0"
+    "mineflayer-tps": "^1.0.1",
+    "mongoose": "^6.4.0",
+    "ms": "^2.1.3"
   }
 }

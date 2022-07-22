@@ -5,7 +5,7 @@ const mineflayer = require('mineflayer')
  * Minecraft event handler
  * @param {mineflayer.Bot} bot Mineflayer Bot
  */
-module.exports = async function handler (bot) {
+module.exports = (bot) => {
     fs.readdirSync('./minecraft/events/').filter(
         file => file.endsWith('.js')
     ).forEach((file) => {
