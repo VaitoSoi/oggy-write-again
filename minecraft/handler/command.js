@@ -14,7 +14,9 @@ module.exports = (array) => {
         if (command) throw new Error('Có 1 file command trùng tên nhau!')
         array.push({
             name: cmd.name,
-            run: cmd.run
+            usage: cmd.usage,
+            aliases: cmd.aliases,
+            run: cmd.run,
         })
     })
 }

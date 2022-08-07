@@ -2,9 +2,9 @@ const { Client, Message, MessageEmbed } = require('discord.js')
 const util = require('minecraft-server-util')
 
 module.exports = { 
-    name: '2y2c',
-    description: 'Hiện tất cả thông tin về server 2y2c.org',
-    usage: '',
+    name: 'status',
+    description: 'Thông tin về 1 server',
+    usage: '<ip> <port>',
     /**
     * 
     * @param {Client} client 
@@ -12,20 +12,22 @@ module.exports = {
     * @param {String[]} args 
     */ 
     run: async(client, message, args) => {
+        if (!args[1]) return message.reply('🛑 | Vui lòng cho biết IP')
+        let port = args[2] != undefined && !isNaN(args[2]) ? Number(args[2]) : 25565
         const embed = new MessageEmbed()
             .setAuthor({
                 name: `${client.user.tag} Server Utils`,
                 iconURL: client.user.displayAvatarURL()
             })
-            .setTitle(`\`2Y2C\` Status`)
+            .setTitle(`\`${args[1].toUpperCase()}\` Status`)
             .setFooter({
                 text: `${message.author.tag}`,
                 iconURL: message.author.displayAvatarURL()
             })
             .setTimestamp()
-            .setThumbnail(`https://eu.mc-api.net/v3/server/favicon/2y2c.org`)
+            .setThumbnail(`https://eu.mc-api.net/v3/server/favicon/${args[1]}`)
         const now = Date.now()
-        await util.status('2y2c.org', 25565)
+        await util.status(args[1], port)
             .then((response) => {
                 const ping = Date.now() - now
                 embed

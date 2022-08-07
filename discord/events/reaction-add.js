@@ -9,16 +9,18 @@ module.exports = {
      */
     async run(reaction, user) {
         const client = reaction.client
+        if (client.type == 'client_2' && reaction.message.guild.members.cache.get(client.client1.user.id)) return
         if (user.bot) return
         const db = require('../../models/option')
         const data = await db.findOne({
             guildid: reaction.message.guildId
         })
         if (!data) return
-        if (reaction.message.id != data.config.messages.restart
-            || reaction.message.id != data.config.messages.status) return
-        if (reaction.message.id == data.config.messages.status) {
-            reaction.message.edit({
+        await reaction.message.fetch()
+        if (reaction.emoji.name == '🔁' 
+        && reaction.message.id == data.config.messages.status) {
+            reaction.users.remove(user)
+            if (reaction.message.author.id == client.user.id) reaction.message.edit({
                 embeds: [
                     new Discord.MessageEmbed()
                         .setTitle('⏳ Đang tải...')
@@ -30,15 +32,15 @@ module.exports = {
                     name: `${client.user.tag} Server Utils`,
                     iconURL: client.user.displayAvatarURL()
                 })
-                .setTitle(`\`2Y2C\` Status`)
+                .setTitle(`\`${process.env.MC_HOST}\` Status`)
                 .setFooter({
-                    text: `${message.author.tag}`,
-                    iconURL: message.author.displayAvatarURL()
+                    text: `${reaction.message.author.tag}`,
+                    iconURL: reaction.message.author.displayAvatarURL()
                 })
                 .setTimestamp()
-                .setThumbnail(`https://eu.mc-api.net/v3/server/favicon/2y2c.org`)
+                .setThumbnail(`https://eu.mc-api.net/v3/server/favicon/${process.env.MC_HOST}`)
             const now = Date.now()
-            util.status('2y2c.org', 25565)
+            await util.status(process.env.MC_HOST, Number(process.env.MC_PORT))
                 .then((response) => {
                     embed
                         .setColor('GREEN')
@@ -59,11 +61,32 @@ module.exports = {
                             '```' + `${e}` + '```'
                         )
                 })
-            reaction.message.edit({
+            if (reaction.message.author.id == client.user.id) reaction.message.edit({
                 embeds: [embed]
             })
-        } else if (reaction.message.id == data.config.messages.status) {
-            
-        }
+            else {
+                let m = await reaction.message.reply({
+                    embeds: [embed]
+                })
+                m.react('🔁')
+                data.config.messages.status = m.id
+                await data.save()
+            }
+        } else if (reaction.emoji.name == '📢' 
+        && reaction.message.id == data.config.messages.restart) {
+            const role = reaction.message.guild.roles.cache.get(data.config.roles.restart)
+            if (!role) return
+            reaction.message.guild.members.cache.get(user.id).roles.add(
+                role, 'Oggy Reaction-Role'
+            )
+                .then((mem) => reaction.message.reply({
+                    content: `Đã thêm role ${role} cho ${user}`,
+                    allowedMentions: {
+                        parse: ['users']
+                    }
+                }).then(m => setTimeout(() => m.delete().catch(e => { }), 5 * 1000)))
+                .catch((e) => reaction.message.reply(`Lỗi: \`\`\`${e}\`\`\``)
+                    .then(m => setTimeout(() => m.delete().catch(e => { }), 15 * 1000)))
+        } else return
     }
 }

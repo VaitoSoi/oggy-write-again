@@ -13,13 +13,13 @@ module.exports = {
         bot.login++
         let sv = ''
         if (bot.login == 1) sv = 'PIN'
-        else if (bot.login == 2) sv = 'QUEUE'
-        else if (bot.login == 3) {
-            sv = 'MAIN'; botlogin = 0
+        else if (bot.login == 2) sv = 'MAIN'
+        chat(bot.client1, bot.client2, new MessageEmbed()
+            .setDescription(`Bot đã vào cụm \`${sv}\``)
+            .setColor(color.green), true)
+        if (sv.toLowerCase() == 'main') {
+            bot.afk.stop()
+            setTimeout(() => bot.afk.start(), 5 * 60 * 1000);
         }
-        chat(bot.client, new MessageEmbed()
-            .setDescription(`**Bot đã vào cụm \`${sv}\`**`)
-            .setColor(color.green), true
-        )
     }
 }

@@ -1,6 +1,5 @@
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
-const token = process.env.TOKEN
 const fs = require('node:fs');
 const { Client } = require('discord.js')
 
@@ -10,12 +9,17 @@ const { Client } = require('discord.js')
  */
 module.exports = (client) => {
     const commands = [];
-    const commandFiles = []
+    const token = process.env[`DISCORD_TOKEN_${client.num}`]
 
     fs.readdirSync('./discord/slash_commands/').forEach((dir) => {
-        fs.readdirSync(`./discord/slash_commands/${dir}/`).forEach((file) => {
+        fs.readdirSync(`./discord/slash_commands/${dir}/`).filter(f => f.endsWith('.js')).forEach((file) => {
             const command = require(`../slash_commands/${dir}/${file}`);
-            commands.push(command.data.toJSON());
+            if (!command || !command.data) return
+            if (dir == 'server') command.server = true
+            if (command.data.name == 'admin' || command.admin == true) command.admin = true
+            if (command.admin == true && client.type == 'client_2') return
+            command.data.setDMPermission(false)
+            commands.push(command.data.toJSON())
             client.slash.set(command.data.name, command)
         })
     })
@@ -24,16 +28,17 @@ module.exports = (client) => {
 
     (async () => {
         try {
-            console.log('[CLIENT]\x1b[33m LOADING SLASH_COMMANDS\x1b[0m');
+            console.log(`[${client.type.toUpperCase()}]\x1b[33m LOADING SLASH_COMMANDS\x1b[0m`);
 
             await rest.put(
                 Routes.applicationCommands(client.user.id),
                 { body: commands },
             );
 
-            console.log('[CLIENT]\x1b[32m LOADED SLASH_COMMANDS\x1b[0m');
+            console.log(`[${client.type.toUpperCase()}]\x1b[32m LOADED SLASH_COMMANDS\x1b[0m`);
         } catch (error) {
-            console.error(`[CLIENT]\x1b[31m LOAD ERROR: ${error}\x1b[0m`);
+            console.error(error)
+            console.log(`[${client.type.toUpperCase()}]\x1b[31m LOAD ERROR: ${error}\x1b[0m`);
         }
     })();
 }

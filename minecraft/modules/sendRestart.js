@@ -21,7 +21,7 @@ module.exports = (client, time, now) => {
         (await channel.messages.fetch()).forEach((msg) => {
             if (msg.id === data.config.messages.restart) return
             if (msg.author.id !== client.user.id) return
-            if ((Date.now() - msg.createdTimestamp) < 31 * 60 * 1000) return
+            if ((Date.now() - msg.createdTimestamp) < 60 * 60 * 1000) return
             msg.delete().catch((e) => { })
         })
         if (!now) channel.send({

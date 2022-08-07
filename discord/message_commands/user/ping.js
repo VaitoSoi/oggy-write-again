@@ -12,10 +12,8 @@ module.exports = {
     */ 
     run: async(client, message, args) => {
         let now = Date.now()
-        let dbping = 0
-        const data = require('../../../models/ping').find()
-        await data;
-        dbping = Date.now() - now
+        await require('../../../models/ping').find()
+        let dbping = Date.now() - now
         /**
          * 
          * @param {Number} num 

@@ -3,6 +3,9 @@ const ms = require('ms')
 
 module.exports = {
     name: 'botinfo',
+    aliases: ['bi', 'info', 'about'],
+    usage: '',
+    description: 'Thông tin về bot',
     /**
      * 
      * @param {mineflayer.Bot} bot 

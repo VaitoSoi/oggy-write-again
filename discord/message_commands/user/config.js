@@ -1,7 +1,7 @@
 const { Client, Message, MessageEmbed } = require('discord.js')
 const util = require('minecraft-server-util')
 
-module.exports = { 
+module.exports = {
     name: 'config',
     description: 'Chỉnh cài đặt của bot',
     usage: 'Dùng lệnh config đi rồi biết :v',
@@ -10,8 +10,8 @@ module.exports = {
     * @param {Client} client 
     * @param {Message} message 
     * @param {String[]} args 
-    */ 
-    run: async(client, message, args) => {
+    */
+    run: async (client, message, args) => {
         let action = args[1]
         let id = args[2]
         if (!action) return message.reply(
@@ -61,27 +61,15 @@ module.exports = {
                 return message.reply('🔴 | Không có dữ liệu về cài đặt của bot.\n' +
                     '🟡 | Dùng lệnh `og.config create` để tạo cài đặt')
             if (id === 'channel') {
-                let set = new Object
                 let type = args[3]
                 let channel
                 if (isNaN(args[4])) channel = message.mentions.channels.first()
                 else channel = message.guild.channels.cache.get(args[4])
                 if (!channel.isText()) return message.reply(`🔴 | <#${channel.id}> phải là một kênh văn bản !`)
-                if (type === 'livechat') set = {
-                    'config.channel.livechat': channel.id
-                }
-                else if (type === 'restart') set = {
-                    'config.channel.restart': channel.id
-                }
-                else if (type === 'status') set = {
-                    'config.channel.status': channel.id
-                }
-                await db.findOneAndUpdate({
-                    'guildid': message.guildId
-                },
-                    {
-                        $set: set
-                    })
+                if (type === 'livechat')data.config.channel.livechat = channel.id
+                else if (type === 'restart') data.config.channel.restart = channel.id
+                else if (type === 'status') data.config.channel.status = channel.id
+                await data.save()
                 if (type == 'status' || type == 'restart') {
                     try {
                         channel.permissionOverwrites.edit(message.guild.roles.everyone, {
@@ -113,15 +101,15 @@ module.exports = {
                             name: `${client.user.tag} Server Utils`,
                             iconURL: client.user.displayAvatarURL()
                         })
-                        .setTitle(`\`2Y2C\` Status`)
+                        .setTitle(`\`${process.env.MC_HOST.toUpperCase()}\` Status`)
                         .setFooter({
                             text: `${message.author.tag}`,
                             iconURL: message.author.displayAvatarURL()
                         })
                         .setTimestamp()
-                        .setThumbnail(`https://mc-api.net/v3/server/favicon/2y2c.org`)
+                        .setThumbnail(`https://mc-api.net/v3/server/favicon/${process.env.MC_HOST}`)
                     const now = Date.now()
-                    await util.status('2y2c.org', 25565)
+                    await util.status(process.env.MC_HOST, Number(process.env.MC_PORT))
                         .then((response) => {
                             const ping = Date.now() - now
                             embed
@@ -150,27 +138,50 @@ module.exports = {
                     data.config.messages.restart = m.id
                     await data.save()
                 } else if (type == 'restart') {
-                    let send = (role) =>
-                        channel.send(
-                            `Click 📢 để nhận role ${role}.\n` +
-                            `Role sẽ được mention khi có thông báo và khi server restart.\n`
-                        ).then(async (msg) => {
-                            msg.react('📢')
-                            data.config.messages.restart = msg.id
-                            await data.save()
+                    let send = (role) => {
+                        message.channel.send('Bạn có muốn tạo một reaction-role không').then((msg) => {
+                            msg.react('✅'); msg.react('❌')
+                            let reaction_collector = msg.createReactionCollector({
+                                time: 5 * 60 * 1000,
+                                filter: (react, user) => user.id == interaction.user.id
+                            })
+                            reaction_collector.on('collect', (react, user) => {
+                                if (react.emoji.name == '✅') {
+                                    react.message.delete()
+                                    channel.send(
+                                        `Click 📢 để nhận role ${role}.\n` +
+                                        `Role sẽ được mention khi có thông báo và khi server restart.\n`
+                                    ).then(async (msg) => {
+                                        msg.react('📢')
+                                        data.config.messages.restart = msg.id
+                                        await data.save()
+                                    })
+                                    reaction_collector.stop()
+                                } else if (react.emoji.name == '❌') {
+                                    react.message.delete()
+                                    react.message.channel.send('✅ | Đã hủy')
+                                    reaction_collector.stop()
+                                }
+                            })
                         })
+                    }
                     let m = await message.channel.send(
                         'Vui lòng chọn 1 trong 2 lựa chọn sau:\n' +
                         '🟢 | Lấy một role restart có sẵn.\n' +
-                        '🆕 | Tạo một role restart mới'
+                        `${message.guild.me.permissions.has('MANAGE_ROLES')
+                            ? '🆕 | Tạo một role restart mới' : ''}`
                     )
-                    m.react('🟢'); m.react('🆕')
-                    m.createReactionCollector({
-                        time: 5 * 60 * 1000
-                    }).on('collect', async (react, user) => {
-                        if (user.id !== message.author.id) return
+                    m.react('🟢');
+                    if (message.guild.me.permissions.has('MANAGE_ROLES')) m.react('🆕')
+                    let react_m_collector = m.createReactionCollector({
+                        time: 5 * 60 * 1000,
+                        filter: (react, user) => user.id == message.author.id
+                    })
+                    react_m_collector.on('collect', async (react, user) => {
                         m.delete()
                         if (react.emoji.name == '🆕') {
+                            if (!message.guild.me.permissions.has('MANAGE_ROLES'))
+                                return message.channel.send('🛑 | Bot thiếu quyền `MANAGE_ROLES` (Quản lý vai trò) nên không thể tạo role!')
                             let role = await message.guild.roles.create({
                                 name: 'restart-notification',
                                 reason: 'Oggy restart reaction-role',
@@ -183,14 +194,15 @@ module.exports = {
                             )
                             data.config.roles.restart = role.id
                             await data.save()
+                            react_m_collector.stop()
                             send(role)
                         } else if (react.emoji.name == '🟢') {
-                            let done = false
                             let msg = await message.channel.send('👇 | Vui lòng ghi ID hoặc mention role.')
-                            message.channel.createMessageCollector({
+                            let react_msg_collector = message.channel.createMessageCollector({
                                 time: 5 * 60 * 1000
-                            }).on('collect', async (m) => {
-                                if (m.author.id != message.author.id || done) return
+                            })
+                            react_msg_collector.on('collect', async (m) => {
+                                if (m.author.id != message.author.id) return
                                 let role = null
                                 if (isNaN(m.content)) role = m.mentions.roles.first()
                                 else role = message.guild.roles.cache.get(m.content)
@@ -202,8 +214,9 @@ module.exports = {
                                 data.config.roles.restart = role.id
                                 await data.save()
                                 message.channel.send('✅ | Đã lưu role!')
+                                react_m_collector.stop()
+                                react_msg_collector.stop()
                                 send(role)
-                                done = true
                             })
                         }
                     })
@@ -229,20 +242,9 @@ module.exports = {
                     )
                 )
             } else if (id == 'livechat_type') {
-                db.findOneAndUpdate({
-                    guildid: message.guildId
-                }, {
-                    $set: {
-                        'config.chatType': args[3]
-                    }
-                }).then(() =>
-                    message.reply('✅ | Đã chỉnh chế độ hiển thị thành công')
-                ).catch(e =>
-                    message.reply(
-                        '🔴 | Xảy ra lỗi trong quá trình chỉnh sửa.\n' +
-                        '```' + e + '```'
-                    )
-                )
+                data.config.chatType = args[3]
+                await data.save()
+                message.reply('✅ | Đã chỉnh chế độ hiển thị thành công')
             }
         } else if (action == 'show') {
             if (!data)

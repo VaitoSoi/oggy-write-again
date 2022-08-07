@@ -33,7 +33,7 @@ module.exports = {
                         (dir.toLowerCase() === 'user' ?
                             'Là các lệnh cơ bản của bot'
                             : dir.toLowerCase() === 'server' ?
-                                'Là các lệnh liên quan đến 2y2c.org'
+                                `Là các lệnh liên quan đến ${process.env.MC_HOST}`
                                 : ''),
                     value: dir.toLowerCase()
                 })

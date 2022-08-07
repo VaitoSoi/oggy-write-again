@@ -37,7 +37,7 @@ module.exports = {
                 `Oggy: ${await rate(Number(ping))}\n` +
                 `WS: ${await rate(Number(wsping))}\n` + 
                 `Mongoose: ${await rate(Number(dbping))}\n` +
-                `**--------------------------------------**`
+                `**-------------------------------------**`
             )
         })
     }

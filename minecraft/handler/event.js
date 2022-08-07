@@ -10,7 +10,10 @@ module.exports = (bot) => {
         file => file.endsWith('.js')
     ).forEach((file) => {
         const event = require(`../events/${file}`)
-        if (!event.discord) bot.on(event.name, (...args) => { event.run(bot, ...args) })
-        else bot.client.on(event.name, (...args) => event.run(bot, ...args))
+        if (!event.discord || event.discord == false) bot.on(event.name, (...args) => { event.run(bot, ...args) })
+        else {
+            bot.client1.on(event.name, (...args) => event.run(bot, ...args))
+            bot.client2.on(event.name, (...args) => event.run(bot, ...args))
+        }
     })
 }
