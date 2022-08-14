@@ -1,12 +1,11 @@
-const { Bot } = require('mineflayer')
-const ascii = require('ascii-table')
-const table = new ascii()
 const { Client, Message, MessageEmbed } = require('discord.js')
+const { Bot } = require('mineflayer')
 
 module.exports = {
-    name: 'players',
+    name: 'tablist',
     description: 'Hiện tất cả player trong server',
     usage: '',
+    server: true,
     /**
     * 
     * @param {Bot} bot
@@ -15,6 +14,8 @@ module.exports = {
     * @param {String[]} args 
     */
     run: async (bot, client, message, args) => {
+        const ascii = require('ascii-table')
+        const table = new ascii()
         if (bot.login == 0) message.reply('🛑 | Bot đang mất kết nối với server')
         else {
             let players = Object.values(bot.players).map(p => p.username)
@@ -28,9 +29,9 @@ module.exports = {
                 embeds: [
                     new MessageEmbed()
                         .setDescription(
-                            '```' + bot.tablist.header.getText().replace('§', '') + '```' + '\n'
-                            + '```' + table.toString().split('\n').slice(1, -1).join('\n') + '```' + '\n'
-                            + '```' + bot.tablist.footer.getText().replace('§', '') + '```'
+                            '```' + bot.tablist.header.getText().replace('§', '') + '```' + '\n' +
+                            '```' + table.toString().split('\n').slice(1, -1).join('\n') + '```' + '\n' +
+                            '```' + bot.tablist.footer.getText().replace('§', '') + '```'
                         )
                 ]
             })

@@ -15,8 +15,7 @@ module.exports = {
         bot.login = 0
         let reconnect = '3m'
         let r = reason
-        let auto = false
-        if (reason.toLowerCase() == 'anti-bot') reconnect = '15s'
+        let auto = true
         if (reason.toLowerCase().split(' ')[0] == 'admin') {
             reason.toLowerCase().split(' ').slice(1).forEach((args) => {
                 let key, value, i = 0
@@ -49,11 +48,13 @@ module.exports = {
             .setColor(color.red), true
         )
         bot.reconnect = setTimeout(() => {
-            chat(bot.client1, bot.client2, new MessageEmbed()
-                .setDescription(`Đang kết nối lại với server....`)
-                .setColor(color.yellow), true
-            )
-            if (auto == true) require('../main')(bot.client1, bot.client2)
+            if (auto == true) {
+                chat(bot.client1, bot.client2, new MessageEmbed()
+                    .setDescription(`Đang kết nối lại với server....`)
+                    .setColor(color.yellow), true
+                )
+                require('../main')(bot.client1, bot.client2)
+            }
         }, ms(reconnect));
     }
 }

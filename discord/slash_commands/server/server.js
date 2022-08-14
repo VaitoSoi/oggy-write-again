@@ -1,4 +1,6 @@
-const { Client, Message, MessageEmbed } = require('discord.js')
+const { CommandInteraction, MessageEmbed } = require('discord.js')
+const { SlashCommandBuilder } = require('@discordjs/builders')
+const { Bot } = require('mineflayer')
 const util = require('minecraft-server-util')
 let commandName = ''
 let i = 0
@@ -8,26 +10,27 @@ process.env.MC_HOST.split('').forEach(n => {
     } else i++
 })
 
-module.exports = { 
-    name: commandName,
-    description: `Hiện tất cả thông tin về server ${process.env.MC_HOST}`,
-    usage: '',
+module.exports = {
+    data: new SlashCommandBuilder()
+        .setName(commandName)
+        .setDescription(`Hiện tất cả các thông tin về ${process.env.MC_HOST}`),
+    server: true,
     /**
     * 
-    * @param {Client} client 
-    * @param {Message} message 
-    * @param {String[]} args 
-    */ 
-    run: async(bot, client, message, args) => {
+    * @param {CommandInteraction} interaction 
+    * @param {Bot} bot
+    */
+    run: async (interaction, bot) => {
+        const client = interaction.client
         const embed = new MessageEmbed()
             .setAuthor({
                 name: `${client.user.tag} Server Utils`,
                 iconURL: client.user.displayAvatarURL()
             })
-            .setTitle(`\`ANARCHYVN\` Status`)
+            .setTitle(`\`${process.env.MC_HOST.toUpperCase()}\` Status`)
             .setFooter({
-                text: `${message.author.tag}`,
-                iconURL: message.author.displayAvatarURL()
+                text: `${interaction.user.tag}`,
+                iconURL: interaction.user.displayAvatarURL()
             })
             .setTimestamp()
             .setThumbnail(`https://eu.mc-api.net/v3/server/favicon/${process.env.MC_HOST}`)
@@ -54,7 +57,7 @@ module.exports = {
                         '```' + `${e}` + '```'
                     )
             })
-        message.reply({
+        interaction.editReply({
             embeds: [embed]
         })
     }
