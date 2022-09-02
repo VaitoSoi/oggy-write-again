@@ -10,13 +10,15 @@ const config = {
 const { Client } = require('discord.js')
 const tpsPlugin = require('mineflayer-tps')(mineflayer)
 const death_event = require('mineflayer-death-event')
+const fs = require('node:fs')
 
 /**
  * Create mineflayer bot
  * @param {Client} client1 
  * @param {Client} client2 
+ * @param {Boolean} handler
  */
-async function run(client1, client2) {
+async function run(client1, client2, handler) {
     /**
      * 
      * Create Bot
@@ -51,7 +53,7 @@ async function run(client1, client2) {
     bot.cmds = []
     bot.reconnect = 0
     bot.joinAt = 0
-    require('./handler/event')(bot)
+    require('./handler/event')(bot, handler)
     require('./handler/command')(bot.cmds)
 
     /**
@@ -61,9 +63,9 @@ async function run(client1, client2) {
      */
     let m = '.'
     setInterval(() => {
-        if (bot.login != 0) {
+        if (bot.players) {
             const tps = bot.getTps() ? bot.getTps() : 20
-            const player = bot.players ? Object.values(bot.players).map(p => p.username).length : 1
+            const player = bot.players ? Object.values(bot.players).length : 1
             const ping = bot.player ? bot.player.ping : 0
             const discordStatus = 'online'
             client1.user.setPresence({
@@ -74,7 +76,7 @@ async function run(client1, client2) {
                 activities: [{ name: `TPS: ${tps} | Players: ${player} | Ping: ${ping}ms`, type: 'PLAYING' }],
                 status: discordStatus
             })
-        } else if (bot.login == 0) {
+        } else {
             if (m.length < 5) m += '.'
             else m = '.'
             client1.user.setPresence({
