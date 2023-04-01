@@ -1,8 +1,8 @@
 import fs from 'node:fs';
-import { Client } from '../index';
+import { Client } from 'discord.js';
 
 /**
- * @param {client} Client
+ * @param {Client} client
  * @returns {void}
  */
 export default function (client) {
