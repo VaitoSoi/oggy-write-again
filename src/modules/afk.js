@@ -1,7 +1,7 @@
-import { Bot } from 'mineflayer'
+import * as Mineflayer from 'mineflayer';
 
 /**
- * @param {Bot} bot 
+ * @param {Mineflayer.Bot} bot 
  */
 export default function (bot) {
     let rotated = false, interval;
