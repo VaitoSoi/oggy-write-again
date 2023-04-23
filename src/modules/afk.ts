@@ -1,10 +1,7 @@
 import * as Mineflayer from 'mineflayer';
 
-/**
- * @param {Mineflayer.Bot} bot 
- */
-export default function (bot) {
-    let rotated = false, interval;
+export default function (bot: Mineflayer.Bot | any): void {
+    let rotated = false, interval: any;
     bot.afk = {};
     bot.afk.start = () => {
         bot.setControlState('jump', true)
