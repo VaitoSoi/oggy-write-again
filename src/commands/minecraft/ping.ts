@@ -1,4 +1,4 @@
-import { MinecraftCommandBuilder } from "../../index.js";
+import { MinecraftCommandBuilder } from "../../index";
 
 export default new MinecraftCommandBuilder()
     .setName('ping')

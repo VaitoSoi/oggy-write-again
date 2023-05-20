@@ -9,6 +9,7 @@ export default model('option', new Schema({
             status: String,
             restart: String,
         },
+        /*
         messages: {
             status: String,
             restart: String,
@@ -21,6 +22,6 @@ export default model('option', new Schema({
             timestamp: String,
             join_leave: String,
         }
-        //prefix: String,
+        */
     }
 }))

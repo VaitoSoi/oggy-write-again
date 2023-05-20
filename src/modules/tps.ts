@@ -2,12 +2,12 @@ export default tps
 import Mineflayer from 'mineflayer'
 
 function tps(bot: Mineflayer.Bot | any): void {
-    let time = Number(bot.time.age)
+    let time = bot.time.age
     let calcTps: Array<Number> = []
     function run(bot: Mineflayer.Bot) {
-        time = Number(bot.time.age)
+        time = bot.time.age
         setTimeout(() => {
-            const diff = Number(bot.time.age) - time
+            const diff = bot.time.age - time
             calcTps.push(diff)
             if (calcTps.length > 20) {
                 calcTps.shift()

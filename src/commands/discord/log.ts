@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "../../index.js";
+import { SlashCommandBuilder } from "../../index";
 
 export default new SlashCommandBuilder()
     .setName('log')
@@ -10,7 +10,7 @@ export default new SlashCommandBuilder()
         .setAutocomplete(true)
     )
     .setRun(async function (interaction, client) {
-        try { console.log(client?.bot?.players[<string>interaction.options.get('log')?.value]) }
+        try { console.log(client?.bot?.players[<string>interaction.options.getString('player')]) }
         catch (e) { console.error(e) }
         interaction.editReply('Logged')
     })

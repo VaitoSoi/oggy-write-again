@@ -2,17 +2,20 @@
 import Discord from 'discord.js'
 import * as Mineflayer from 'mineflayer'
 import mongoose from 'mongoose'
-import _package from '../package.json' assert { type: "json" };
+import _package from '../package.json';
 import ms from 'ms'
 
 // Import Mineflayer plugins
-import afk from './modules/afk.js'
-import tps from './modules/tps.js'
+import afk from './modules/afk'
+import tps from './modules/tps'
 
 // Import handler modules
-import eventsHandler from './handlers/events.js'
-import commandHandler from './handlers/command.js'
+import eventsHandler from './handlers/events'
+import commandHandler from './handlers/command'
 
+/*
+ * Main Client 
+ */
 interface Package {
     name: string;
     version: string;
@@ -27,8 +30,10 @@ interface Package {
 interface Data {
     loginAt: number;
     currentCluster: number;
+    lastMsg: number;
+    // PinRetry: number;
 }
-export class Client {
+export class Oggy {
     config: ENV | YAML;
     client_1: Discord.Client;
     client_2: Discord.Client;
@@ -38,32 +43,39 @@ export class Client {
     commands: Discord.Collection<string, SlashCommandBuilder | SlashCommandBuilderWithData>;
     commandsJson: Array<Discord.RESTPostAPIChatInputApplicationCommandsJSONBody>
     constructor(config: ENV | YAML) {
-        console.log(config)
         this.config = config
         this.commands = new Discord.Collection()
         this.commandsJson = []
         this.package = _package
         this.data = {
             loginAt: 0,
-            currentCluster: 0
+            currentCluster: 0,
+            lastMsg: Date.now(),
+            // PinRetry: 0
         }
         const clientConfig = {
-            intents: 513,
-            partials: [Discord.Partials.Channel, Discord.Partials.Message, Discord.Partials.User]
+            intents: [
+                Discord.GatewayIntentBits.Guilds,
+                Discord.GatewayIntentBits.GuildMessages,
+                Discord.GatewayIntentBits.MessageContent,
+                Discord.GatewayIntentBits.GuildMessageReactions,
+            ],
+            partials: [Discord.Partials.Channel, Discord.Partials.Message, Discord.Partials.User, Discord.Partials.Reaction]
         }
         this.client_1 = new Discord.Client(clientConfig)
         this.client_2 = new Discord.Client(clientConfig);
         (async () => await mongoose.connect(this.config.database.link))()
     };
-    setConfig(config: ENV | YAML): Client {
+    setConfig(config: ENV | YAML): Oggy {
         this.config = config;
         return this
     }
     async start(): Promise<void> {
+        process.on('rejectionHandled', (error) => console.error(error))
         await commandHandler(this)
-        this.#discord_login(this.client_1, this.config.discord.token_1)
-        if (this.config.discord.token_2)
-            this.#discord_login(this.client_2, this.config.discord.token_2)
+        this.#discord_login(this.client_1, this.config.discord.token.client_1)
+        if (this.config.discord.token.client_2)
+            this.#discord_login(this.client_2, this.config.discord.token.client_2)
         this.#minecraft_start()
     }
     #discord_login(client: Discord.Client, token: string): void {
@@ -74,32 +86,53 @@ export class Client {
         client.on(Discord.Events.Warn, console.error);
         client.on(Discord.Events.ClientReady, async (client) => {
             console.log(`[DISCORD.JS] [${client.user.tag}] User is ready`)
+            eventsHandler({ client, mode: EventHandlerMode.Discord, oggy: this })
             const rest = new Discord.REST().setToken(token)
             const data = await rest.put(
                 Discord.Routes.applicationCommands(client.user.id),
                 { body: this.commandsJson },
             );
             console.log(`[DISCORD.JS] [${client.user.tag}] Registered ${(<Array<Discord.RESTPostAPIChatInputApplicationCommandsJSONBody>>data).length ?? 0}/${this.commandsJson.length} application (/) commands.`);
-            eventsHandler({ client, mode: EventHandlerMode.Discord, config: this })
         })
     }
-    #minecraft_start() {
-        this.bot = Mineflayer.createBot({
-            username: this.config.minecraft.username,
-            password: this.config.minecraft.password,
-            host: this.config.minecraft.ip,
-            version: this.config.minecraft.version,
+    #minecraft_start(): void {
+        const option: Mineflayer.BotOptions = {
+            username: this.config.minecraft.account.username,
+            password: this.config.minecraft.account.password,
+            host: this.config.minecraft.server.ip,
+            version: this.config.minecraft.server.version,
             hideErrors: true
-        })
+        }
+        this.bot = Mineflayer.createBot(option)
+        eventsHandler({ bot: this.bot, mode: EventHandlerMode.Mineflayer, oggy: this })
         this.bot.loadPlugins([afk, tps]);
         this.bot.once('spawn', () => {
-            console.log(`[MINEFLAYER] [${this.bot?.username}] Spawned`)
-            eventsHandler({ bot: this.bot, mode: EventHandlerMode.Mineflayer, config: this })
+            // console.log(`[MINEFLAYER] [${this.bot?.username}] Spawned`)
+            this.data.loginAt = Date.now()
+            this.data.currentCluster = -1
         });
-        this.bot.once('end', () => void setTimeout(() => this.#minecraft_start(), 5 * 60 * 1000));
+        this.bot.once('end', () =>
+            void setTimeout(() =>
+                this.#minecraft_start(),
+                this.config.minecraft.server.reconnectTimeout
+            )
+        );
     }
+
 }
 
+/*
+ * Minecraft Thing
+ */
+export const Cluster = [
+    'Pin',
+    'Queue',
+    'Main'
+]
+
+/*
+ * Command Builder 
+ */
 type Callback<T> = T | PromiseLike<T>
 export interface Bot extends Mineflayer.Bot {
     getTps(): number
@@ -109,29 +142,31 @@ export interface Bot extends Mineflayer.Bot {
     }
 }
 
+export type CommandInteraction = Discord.ChatInputCommandInteraction
 export class SlashCommandBuilder extends Discord.SlashCommandBuilder {
-    run: (interaction: Discord.CommandInteraction, client?: Client) => Callback<void>
-    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client?: Client) => Callback<void>
+    run: (interaction: CommandInteraction, client?: Oggy) => Callback<void | any>
+    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client?: Oggy) => Callback<void | any>
     constructor() {
         super()
         this.setName('name')
         this.setDescription('description')
         this.setDMPermission(false)
     }
-    setRun(run: (interaction: Discord.CommandInteraction, client?: Client) => Callback<void>) { this.run = run; return this; }
-    setAutocompleteRun(run: (interaction: Discord.AutocompleteInteraction, client?: Client) => Callback<void>) { this.autocompleteRun = run; return this; }
+    setRun(run: (interaction: CommandInteraction, client?: Oggy) => Callback<void | any>) { this.run = run; return this; }
+    setAutocompleteRun(run: (interaction: Discord.AutocompleteInteraction, client?: Oggy) => Callback<void | any>) { this.autocompleteRun = run; return this; }
 }
 interface SlashCommandBuilderWithDataOption {
     data: Discord.SlashCommandBuilder | Discord.SlashCommandSubcommandsOnlyBuilder
-    run: (interaction: Discord.CommandInteraction, client?: Client) => Callback<void>
-    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client?: Client) => Callback<void>
+    run: (interaction: CommandInteraction, client?: Oggy) => Callback<void | any>
+    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client?: Oggy) => Callback<void | any>
 }
 export class SlashCommandBuilderWithData {
     data: Discord.SlashCommandBuilder | Discord.SlashCommandSubcommandsOnlyBuilder
-    run: (interaction: Discord.CommandInteraction, client?: Client) => Callback<void>
-    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client?: Client) => Callback<void>
+    run: (interaction: CommandInteraction, client?: Oggy) => Callback<void | any>
+    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client?: Oggy) => Callback<void | any>
     constructor(config?: SlashCommandBuilderWithDataOption) {
         this.data = config?.data ?? new SlashCommandBuilder()
+        this.data.setDMPermission(false)
         this.run = config?.run ?? function () { }
         this.autocompleteRun = config?.autocompleteRun ?? function () { }
     }
@@ -139,11 +174,11 @@ export class SlashCommandBuilderWithData {
         this.data = data
         return this
     }
-    setRun(run: (interaction: Discord.CommandInteraction, client?: Client) => Callback<void>) {
+    setRun(run: (interaction: CommandInteraction, client?: Oggy) => Callback<void | any>) {
         this.run = run
         return this
     }
-    setAutocompleteRun(run: (interaction: Discord.AutocompleteInteraction, client?: Client) => Callback<void>) {
+    setAutocompleteRun(run: (interaction: Discord.AutocompleteInteraction, client?: Oggy) => Callback<void | any>) {
         this.autocompleteRun = run
         return this
     }
@@ -153,14 +188,14 @@ interface MinecraftCommandBuilderOption {
     description: string;
     usage: string
     aliases: Array<string>
-    run: (args: Array<string>, bot: Mineflayer.Bot) => Callback<void>
+    run: (args: Array<string>, bot: Mineflayer.Bot) => Callback<void | any>
 }
 export class MinecraftCommandBuilder {
     name: string;
     description: string;
     usage: string
     aliases: Array<string>
-    run: (args: Array<string>, bot: Mineflayer.Bot) => Callback<void>
+    run: (args: Array<string>, bot: Mineflayer.Bot) => Callback<void | any>
     constructor(option?: MinecraftCommandBuilderOption) {
         this.name = option?.name || 'namw'
         this.description = option?.description ?? 'Lệnh không có miêu tả'
@@ -180,11 +215,14 @@ export class MinecraftCommandBuilder {
     setAliases(aliases: Array<string>) {
         this.aliases = aliases; return this;
     };
-    setRun(run: (args: Array<string>, bot: Mineflayer.Bot) => Callback<void>) {
+    setRun(run: (args: Array<string>, bot: Mineflayer.Bot) => Callback<void | any>) {
         this.run = run; return this;
     };
 }
 
+/*
+ * Event Builder
+ */
 type DiscordEvents = Discord.Events
 export enum MineflayerEvents {
     "Chat" = "chat",
@@ -287,12 +325,12 @@ export interface EventHandlerConfig {
     client?: Discord.Client;
     bot?: Mineflayer.Bot;
     mode: EventHandlerMode;
-    config: Client;
+    oggy: Oggy;
 }
 interface EventConfig {
     name: DiscordEvents | MineflayerEvents | string;
     once: boolean;
-    run: (client: Client, ...args: any[]) => Callback<void>
+    run: (client: Oggy, ...args: any[]) => Callback<void>
 }
 export class EventBuilder {
     name: DiscordEvents | MineflayerEvents | string;
@@ -309,37 +347,62 @@ export class EventBuilder {
     setOnce(once: Boolean): EventBuilder {
         this.once = once; return this;
     };
-    setRun(run: (client: Client, ...args: any[]) => Callback<void>) {
+    setRun(run: (client: Oggy, ...args: any[]) => Callback<void>) {
         this.run = run; return this;
     };
 }
 
+/*
+ * Bot Config
+ */
 interface DiscordConfig {
-    token_1: string
-    token_2: string
+    token: {
+        client_1: string;
+        client_2: string;
+    };
+    channel: {
+        log: string;
+    };
+    command: {
+        exclude: Array<string>;
+    };
+    owner: {
+        id: string;
+    };
 }
 interface MinecraftConfig {
-    username: string
-    password: string
-    pin: string
-    ip: string
-    version: string
-    reconnectTimeout: number
+    account: {
+        username: string;
+        password: string;
+    };
+    ingame: {
+        pin: string;
+        // PinRetry: number;
+        pass: string;
+    }
+    server: {
+        ip: string;
+        version: string;
+        port: number;
+        reconnectTimeout: number;
+        chatTimeout: number;
+        loginType: 'cratingTable' | 'chatInput' | 'auth';
+    }
 }
 interface StatusConfig {
-    type: string
-    updateInterval: number
+    type: string;
     discord: {
-        text: string,
-        status: string | Discord.PresenceUpdateStatus
-    }
+        text: string;
+        status: string | Discord.PresenceUpdateStatus;
+        updateInterval: number;
+    };
     minecraft: {
-        connect: string | Discord.PresenceUpdateStatus
-        disconnect: string | Discord.PresenceUpdateStatus
-    }
+        connect: string | Discord.PresenceUpdateStatus;
+        disconnect: string | Discord.PresenceUpdateStatus;
+    };
 }
 interface DatabaseConfig {
-    link: string
+    link: string;
 }
 export class ENV {
     readonly discord: DiscordConfig
@@ -347,36 +410,61 @@ export class ENV {
     readonly status: StatusConfig
     readonly database: DatabaseConfig
     constructor(env: any) {
-        const discord = {
-            token_1: env.DISCORD_TOKEN_1 ?? '',
-            token_2: env.DISCORD_TOKEN_2 ?? '',
+        const discord: DiscordConfig = {
+            token: {
+                client_1: env.DISCORD_TOKEN_1 ?? '',
+                client_2: env.DISCORD_TOKEN_2 ?? '',
+            },
+            channel: {
+                log: env.DISCORD_CHANNEL_LOG ?? ''
+            },
+            command: {
+                exclude: (env.DISCORD_COMMAND_EXCLUDE?.startsWith('[') && env.DISCORD_COMMAND_EXCLUDE?.endsWith(']')
+                    ? env.DISCORD_COMMAND_EXCLUDE?.slice(1, -1).split(',')
+                    : env.DISCORD_COMMAND_EXCLUDE?.split(',')) ?? [],
+            },
+            owner: {
+                id: env.DISCORD_OWNER_ID ?? ''
+            }
         }
-        const minecraft = {
-            username: env.MINECRAFT_USERNAME ?? 'player',
-            password: env.MINECRAFT_PASSWORD ?? '',
-            pin: env.MINECRAFT_PIN ?? '1 1 1 1',
-            ip: env.MINECRAFT_IP ?? '2y2c.asia',
-            version: env.MINECRAFT_VERSION ?? '1.16.5',
-            port: Number(env.MINECRAFT_PORT) ?? 25565,
-            reconnectTimeout: (isNaN(env.MINECRAFT_RECONNECTTIMEOUT)
-                ? ms(<string>env.MINECRAFT_RECONNECTTIMEOUT)
-                : Number(env.MINECRAFT_RECONNECTTIMEOUT)) ?? 5 * 1000
+        const minecraft: MinecraftConfig = {
+            account: {
+                username: env.MINECRAFT_ACCOUNT_USERNAME ?? 'player',
+                password: env.MINECRAFT_ACCOUNT_PASSWORD ?? '',
+            },
+            ingame: {
+                pin: env.MINECRAFT_IG_PIN ?? '1 1 1 1',
+                // PinRetry: Number(env.MINECRAFT_IG_PINRETRY ?? 3),
+                pass: env.MINECRAFT_IG_PASS ?? 'igpass'
+            },
+            server: {
+                ip: env.MINECRAFT_SERVER_IP ?? '2y2c.asia',
+                version: env.MINECRAFT_SERVER_VERSION ?? '1.16.5',
+                port: Number(env.MINECRAFT_SERVER_PORT) ?? 25565,
+                reconnectTimeout: !! env.MINECRAFT_SERVER_RECONNECTTIMEOUT ?(isNaN(env.MINECRAFT_SERVER_RECONNECTTIMEOUT)
+                    ? ms(<string>env.MINECRAFT_SERVER_RECONNECTTIMEOUT)
+                    : Number(env.MINECRAFT_SERVER_RECONNECTTIMEOUT)) : 5 * 60 * 1000,
+                loginType: env.MINECRAFT_SERVER_LOGINTYPE ?? 'chatInput',
+                chatTimeout: env.MINECRAFT_SERVER_CHATTIMEOUT ? (isNaN(env.MINECRAFT_SERVER_CHATTIMEOUT)
+                    ? ms(<string>env.MINECRAFT_SERVER_CHATTIMEOUT)
+                    : Number(env.MINECRAFT_SERVER_CHATTIMEOUT)) : 5 * 60 * 1000
+            }
         }
-        const status = {
+        const status: StatusConfig = {
             type: env.STATUS_TYPE ?? 'discord',
-            updateInterval: env.STATUS_UPDATEINTERVAL ?? '5m',
             discord: {
                 text: (env.STATUS_DISCORD_TEXT?.startsWith('[') && env?.STATUS_DISCORD_TEXT.endsWith(']')
                     ? env.STATUS_DISCORD_TEXT?.slice(1, -1).split(',')
                     : env.STATUS_DISCORD_TEXT?.split(',')) ?? [`OggyTheCode ${_package.version}`, `Created by: ${_package.author}`],
-                status: env.STATUS_DISCORD_TYPE ?? Discord.PresenceUpdateStatus.Online
+                status: env.STATUS_DISCORD_TYPE ?? Discord.PresenceUpdateStatus.Online,
+                updateInterval: env.STATUS_UPDATEINTERVAL ?? '5m'
             },
             minecraft: {
                 disconnect: env.STATUS_MINECRAFT_DISCONNECT ?? Discord.PresenceUpdateStatus.DoNotDisturb,
                 connect: env.STATUS_MINECRAFT_CONNECT ?? Discord.PresenceUpdateStatus.DoNotDisturb
             }
         }
-        const database = {
+        const database: DatabaseConfig = {
             link: env.DATABASE_LINK
         }
         this.discord = discord;
@@ -392,36 +480,63 @@ export class YAML {
     readonly status: StatusConfig
     readonly database: DatabaseConfig
     constructor(yaml: any) {
-        const discord = {
-            token_1: yaml.discord.token_1 ?? '',
-            token_2: yaml.discord.token_2 ?? '',
+        const discord: DiscordConfig = {
+            token: {
+                client_1: yaml.discord.token_1 ?? '',
+                client_2: yaml.discord.token_2 ?? '',
+            },
+            channel: {
+                log: yaml.discord.channel.log ?? ''
+            },
+            command: {
+                exclude: (yaml.discord.command.exclude?.startsWith('[') && yaml.discord.command.exclude.endsWith(']')
+                    ? yaml.discord.command.exclude?.slice(1, -1).split(',')
+                    : yaml.discord.command.exclude?.split(',')) ?? [],
+            },
+            owner: {
+                id: yaml.discord.owner.id ?? ''
+            }
         }
-        const minecraft = {
-            username: yaml.minecraft.username ?? 'player',
-            password: yaml.minecraft.password ?? '',
-            pin: yaml.minecraft.pin ?? '1 1 1 1',
-            ip: yaml.minecraft.ip ?? '2y2c.asia',
-            version: yaml.minecraft.version ?? '1.16.5',
-            port: yaml.minecraft.port ?? '25565',
-            reconnectTimeout: (!!yaml.minecraft.reconnectTimeout && Number.isNaN(yaml.minecraft.reconnectTimeout)
-                ? ms(<string>(yaml.minecraft.reconnectTimeout))
-                : Number(yaml.minecraft.reconnectTimeout)) ?? 5 * 1000
+        const minecraft: MinecraftConfig = {
+            account: {
+                username: yaml.minecraft.account.username ?? 'player',
+                password: yaml.minecraft.account.password ?? '',
+            },
+            ingame: {
+                pin: yaml.minecraft.ingame.pin ?? '1 1 1 1',
+                // PinRetry: Number(yaml.minecraft.ingame.pinretry ?? 3),
+                pass: yaml.minecraft.ingame.pass ?? 'igpass'
+            },
+            server: {
+                ip: yaml.minecraft.server.ip ?? 'hypixel.com',
+                version: yaml.minecraft.server.version ?? '1.16.5',
+                port: yaml.minecraft.server.port ?? '25565',
+                reconnectTimeout: !!yaml.minecraft.server.reconnectTimeout ? (Number.isNaN(yaml.minecraft.reconnectTimeout)
+                    ? ms(<string>(yaml.minecraft.server.reconnectTimeout))
+                    : Number(yaml.minecraft.server.reconnectTimeout)) : 5 * 60 * 1000,
+                loginType: yaml.minecraft.server.loginType ?? 'chatInput',
+                chatTimeout: (!!yaml.minecraft.server.chatTimeout && Number.isNaN(yaml.minecraft.chatTimeout)
+                    ? ms(<string>(yaml.minecraft.server.chatTimeout))
+                    : Number(yaml.minecraft.server.chatTimeout)) ?? 5 * 60 * 1000
+            }
         }
-        const status = {
+        const status: StatusConfig = {
             type: yaml.status.type ?? 'discord',
-            updateInterval: yaml.status.updateInterval ?? '5m',
             discord: {
-                text: (yaml.status.discord.text?.startsWith('[') && yaml?.status.discord.text.endsWith(']')
-                    ? yaml.status.discord.text?.slice(1, -1).split(',')
+                text: (Array.isArray(yaml.status.discord.text)
+                    ? yaml.status.discord.text
                     : yaml.status.discord.text?.split(',')) ?? [`OggyTheCode ${_package.version}`],
-                status: yaml.status.discord.status ?? Discord.PresenceUpdateStatus.Online
+                status: yaml.status.discord.status ?? Discord.PresenceUpdateStatus.Online,
+                updateInterval: yaml.status.updateInterval ?? '5m'
             },
             minecraft: {
                 disconnect: yaml.status.minecraft.disconnect ?? Discord.PresenceUpdateStatus.DoNotDisturb,
                 connect: yaml.status.minecraft.connect ?? Discord.PresenceUpdateStatus.DoNotDisturb
             }
         }
-        const database = yaml.database
+        const database: DatabaseConfig = {
+            link: yaml.database
+        }
         this.discord = discord;
         this.minecraft = minecraft;
         this.status = status
