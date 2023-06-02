@@ -5,11 +5,12 @@ export default new EventBuilder()
     .setName(MineflayerEvents.Login)
     .setOnce(false)
     .setRun(function (client) {
-        return
+        /*
         client.data.currentCluster++
         console.log(client.data.currentCluster)
         sendMessage(client, new consoleEmbed()
             .setTitle(`Đã chuyển qua cụm ${Cluster[client.data.currentCluster]}`)
             .setColor('Green')
         )
+        */
     })

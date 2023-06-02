@@ -2,6 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, ComponentTyp
 import { SlashCommandBuilderWithData } from "../../index";
 import option from "../../database/option";
 import { status } from 'minecraft-server-util'
+import ms from 'ms'
 
 export default new SlashCommandBuilderWithData()
     .setData(new SlashCommandBuilder()
@@ -185,17 +186,11 @@ export default new SlashCommandBuilderWithData()
                                 const row = new ActionRowBuilder<ButtonBuilder>()
                                     .addComponents(
                                         new ButtonBuilder()
-                                            .setCustomId('update_server')
+                                            .setCustomId('update_status')
                                             .setDisabled(false)
                                             .setEmoji('⛏')
                                             .setLabel('Update Infomation')
-                                            .setStyle(ButtonStyle.Secondary),
-                                        new ButtonBuilder()
-                                            .setCustomId('update_bot')
-                                            .setDisabled(false)
-                                            .setEmoji('🤖')
-                                            .setLabel('Bot Information')
-                                            .setStyle(ButtonStyle.Primary)
+                                            .setStyle(ButtonStyle.Secondary)
                                     )
                                 Promise.resolve(status(ip, port, config))
                                     .then(async (res) => {

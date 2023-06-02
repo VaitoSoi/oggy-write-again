@@ -7,8 +7,8 @@ export default new EventBuilder()
     .setName(MineflayerEvents.MessageStr)
     .setOnce(false)
     .setRun(async function (client, message: string) {
-        console.log(message)
-        const normalChat = /^<(.+)> (.+)$/
+        // console.log(message)
+        const normalChat = /^<(.+)>$/
         const whisperSend = /^nhắn cho (.+): (.+)$/
         const whisperReceive = /^(.+) nhắn: $(.+)$/
         const embed = new EmbedBuilder()
@@ -17,15 +17,16 @@ export default new EventBuilder()
                 iconURL: `https://github.com/${client.package.github}.png`
             })
             .setTimestamp()
-        if (normalChat.test(message ?? '')) {
-            const name = (normalChat.exec(message ?? '') || [])[1]
-            console.dir({ name, player: client.bot?.players[name] }, { depth: null })
+        if (normalChat.test(message.split(' ')[0] ?? '')) {
+            const name = (normalChat.exec(message.split(' ')[0] ?? '') ?? ['', 'Oggy'])[1]
+            // console.dir({ name, player: client.bot?.players[name] }, { depth: null })
+            const content = message.slice(name.length + 3)
             embed
                 .setAuthor({
                     name,
                     iconURL: `https://crafatar.com/avatars/${client.bot?.players[name]?.uuid ?? ''}`
                 })
-                .setDescription((normalChat.exec(message) ?? [])[2])
+                .setDescription(content.startsWith('>') ? `\\${content}` : content)
                 .setColor('Blue')
         } else if (whisperSend.test(message))
             embed
@@ -50,20 +51,23 @@ export default new EventBuilder()
                     name: 'Server Console',
                     iconURL: `https://api.mcstatus.io/v2/icon/${client.config.minecraft.server.ip}`
                 })
-                .setDescription(message ?? 'Nothing....')
+                .setDescription(message || 'Nothing....')
                 .setColor('Blue')
             switch (message) {
                 case 'đang vào AnarchyVN...':
                 case 'Connecting to the server...':
+                case 'Đang kết nối tới server...':
                     embed.setColor('Yellow'); break
                 case 'Please log-in in order to use the chat or any commands!':
                 case 'Oops something went wrong... Putting you back in queue.':
                 case 'Already connecting to this server!':
+                case 'Oops có một số trục trặc... Bạn đã được quay trở lại hàng chờ.':
+                case 'AnarchyVN đã full':
                     embed.setColor('Red'); break
             }
         }
         sendMessage(client, embed)
-
+        return
         if (message.trim().toLowerCase() == 'dùng lệnh/anarchyvn  để vào server.') {
             await wait(1000).catch(e => { })
             client.bot?.chat('/anarchyvn');

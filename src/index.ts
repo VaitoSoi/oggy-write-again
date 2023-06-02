@@ -76,7 +76,7 @@ export class Oggy {
         this.#discord_login(this.client_1, this.config.discord.token.client_1)
         if (this.config.discord.token.client_2)
             this.#discord_login(this.client_2, this.config.discord.token.client_2)
-        this.#minecraft_start()
+        // this.minecraft_start()
     }
     #discord_login(client: Discord.Client, token: string): void {
         client.login(token)
@@ -95,7 +95,8 @@ export class Oggy {
             console.log(`[DISCORD.JS] [${client.user.tag}] Registered ${(<Array<Discord.RESTPostAPIChatInputApplicationCommandsJSONBody>>data).length ?? 0}/${this.commandsJson.length} application (/) commands.`);
         })
     }
-    #minecraft_start(): void {
+    minecraft_start(): void {
+        this.bot?.end()
         const option: Mineflayer.BotOptions = {
             username: this.config.minecraft.account.username,
             password: this.config.minecraft.account.password,
@@ -113,7 +114,7 @@ export class Oggy {
         });
         this.bot.once('end', () =>
             void setTimeout(() =>
-                this.#minecraft_start(),
+                this.minecraft_start(),
                 this.config.minecraft.server.reconnectTimeout
             )
         );
@@ -183,6 +184,7 @@ export class SlashCommandBuilderWithData {
         return this
     }
 }
+
 interface MinecraftCommandBuilderOption {
     name: string;
     description: string;
@@ -197,7 +199,7 @@ export class MinecraftCommandBuilder {
     aliases: Array<string>
     run: (args: Array<string>, bot: Mineflayer.Bot) => Callback<void | any>
     constructor(option?: MinecraftCommandBuilderOption) {
-        this.name = option?.name || 'namw'
+        this.name = option?.name || 'Ủa sao có lệnh nì hay vậy :)?'
         this.description = option?.description ?? 'Lệnh không có miêu tả'
         this.usage = option?.usage ?? 'Lệnh không có cách dùng'
         this.aliases = option?.aliases ?? []
@@ -220,10 +222,29 @@ export class MinecraftCommandBuilder {
     };
 }
 
+interface CompilerCommandOption {
+    name: string;
+    run: (...args: any[]) => Callback<any>
+}
+export class CompilerCommandBuilder {
+    name: string;
+    run: (...args: any[]) => Callback<any>
+    constructor (option?: CompilerCommandOption) {
+        this.name = option?.name || 'command'
+        this.run = option?.run || function () { }
+    }
+    setName(name: string) {
+        this.name = name; return this;
+    };
+    setRun(run: (...args: any[]) => Callback<any>) {
+        this.run = run; return this
+    }
+}
+
 /*
  * Event Builder
  */
-type DiscordEvents = Discord.Events
+export type DiscordEvents = Discord.Events
 export enum MineflayerEvents {
     "Chat" = "chat",
     "Whisper" = "whisper",
@@ -391,10 +412,10 @@ interface MinecraftConfig {
 }
 interface StatusConfig {
     type: string;
+    updateInterval: number;
     discord: {
         text: string;
         status: string | Discord.PresenceUpdateStatus;
-        updateInterval: number;
     };
     minecraft: {
         connect: string | Discord.PresenceUpdateStatus;
@@ -441,7 +462,7 @@ export class ENV {
                 ip: env.MINECRAFT_SERVER_IP ?? '2y2c.asia',
                 version: env.MINECRAFT_SERVER_VERSION ?? '1.16.5',
                 port: Number(env.MINECRAFT_SERVER_PORT) ?? 25565,
-                reconnectTimeout: !! env.MINECRAFT_SERVER_RECONNECTTIMEOUT ?(isNaN(env.MINECRAFT_SERVER_RECONNECTTIMEOUT)
+                reconnectTimeout: !!env.MINECRAFT_SERVER_RECONNECTTIMEOUT ? (isNaN(env.MINECRAFT_SERVER_RECONNECTTIMEOUT)
                     ? ms(<string>env.MINECRAFT_SERVER_RECONNECTTIMEOUT)
                     : Number(env.MINECRAFT_SERVER_RECONNECTTIMEOUT)) : 5 * 60 * 1000,
                 loginType: env.MINECRAFT_SERVER_LOGINTYPE ?? 'chatInput',
@@ -452,12 +473,15 @@ export class ENV {
         }
         const status: StatusConfig = {
             type: env.STATUS_TYPE ?? 'discord',
+            updateInterval: !!env.STATUS_UPDATEINTERVAL ? (isNaN(env.STATUS_UPDATEINTERVAL)
+                ? ms(<string>env.STATUS_UPDATEINTERVAL)
+                : Number(env.STATUS_UPDATEINTERVAL)
+            ) : 5 * 60 * 1000,
             discord: {
                 text: (env.STATUS_DISCORD_TEXT?.startsWith('[') && env?.STATUS_DISCORD_TEXT.endsWith(']')
                     ? env.STATUS_DISCORD_TEXT?.slice(1, -1).split(',')
                     : env.STATUS_DISCORD_TEXT?.split(',')) ?? [`OggyTheCode ${_package.version}`, `Created by: ${_package.author}`],
-                status: env.STATUS_DISCORD_TYPE ?? Discord.PresenceUpdateStatus.Online,
-                updateInterval: env.STATUS_UPDATEINTERVAL ?? '5m'
+                status: env.STATUS_DISCORD_TYPE ?? Discord.PresenceUpdateStatus.Online
             },
             minecraft: {
                 disconnect: env.STATUS_MINECRAFT_DISCONNECT ?? Discord.PresenceUpdateStatus.DoNotDisturb,
@@ -489,9 +513,7 @@ export class YAML {
                 log: yaml.discord.channel.log ?? ''
             },
             command: {
-                exclude: (yaml.discord.command.exclude?.startsWith('[') && yaml.discord.command.exclude.endsWith(']')
-                    ? yaml.discord.command.exclude?.slice(1, -1).split(',')
-                    : yaml.discord.command.exclude?.split(',')) ?? [],
+                exclude: yaml.discord.command.exclude ?? [],
             },
             owner: {
                 id: yaml.discord.owner.id ?? ''
@@ -511,23 +533,24 @@ export class YAML {
                 ip: yaml.minecraft.server.ip ?? 'hypixel.com',
                 version: yaml.minecraft.server.version ?? '1.16.5',
                 port: yaml.minecraft.server.port ?? '25565',
-                reconnectTimeout: !!yaml.minecraft.server.reconnectTimeout ? (Number.isNaN(yaml.minecraft.reconnectTimeout)
-                    ? ms(<string>(yaml.minecraft.server.reconnectTimeout))
+                reconnectTimeout: !!yaml.minecraft.server.reconnectTimeout ? (isNaN(yaml.minecraft.server.reconnectTimeout)
+                    ? ms(<string>yaml.minecraft.server.reconnectTimeout)
                     : Number(yaml.minecraft.server.reconnectTimeout)) : 5 * 60 * 1000,
                 loginType: yaml.minecraft.server.loginType ?? 'chatInput',
-                chatTimeout: (!!yaml.minecraft.server.chatTimeout && Number.isNaN(yaml.minecraft.chatTimeout)
-                    ? ms(<string>(yaml.minecraft.server.chatTimeout))
-                    : Number(yaml.minecraft.server.chatTimeout)) ?? 5 * 60 * 1000
+                chatTimeout: !!yaml.minecraft.server.chatTimeout ? (isNaN(yaml.minecraft.server.chatTimeout)
+                    ? ms(<string>yaml.minecraft.server.chatTimeout)
+                    : Number(yaml.minecraft.server.chatTimeout)) : 5 * 60 * 1000
             }
         }
         const status: StatusConfig = {
             type: yaml.status.type ?? 'discord',
+            updateInterval: !!yaml.status.updateInterval ? (isNaN(yaml.status.updateInterval)
+                ? ms(<string>yaml.status.updateInterval)
+                : Number(yaml.status.updateInterval)
+            ) : 5 * 60 * 1000,
             discord: {
-                text: (Array.isArray(yaml.status.discord.text)
-                    ? yaml.status.discord.text
-                    : yaml.status.discord.text?.split(',')) ?? [`OggyTheCode ${_package.version}`],
-                status: yaml.status.discord.status ?? Discord.PresenceUpdateStatus.Online,
-                updateInterval: yaml.status.updateInterval ?? '5m'
+                text: yaml.status.discord.text ?? [`OggyTheCode ${_package.version}`],
+                status: yaml.status.discord.status ?? Discord.PresenceUpdateStatus.Online
             },
             minecraft: {
                 disconnect: yaml.status.minecraft.disconnect ?? Discord.PresenceUpdateStatus.DoNotDisturb,
@@ -535,7 +558,7 @@ export class YAML {
             }
         }
         const database: DatabaseConfig = {
-            link: yaml.database
+            link: yaml.database.link ?? ''
         }
         this.discord = discord;
         this.minecraft = minecraft;

@@ -7,6 +7,7 @@ export default new EventBuilder()
     .setOnce(false)
     .setRun(async (oggy, message: Message) => {
         if (!message.inGuild()) return
+        if (message.guild.members.cache.get(oggy.client_1.user?.id ?? '') && message.client.user.id == oggy.client_2.user?.id) return
         const data = await option.findOne({ guildid: message.guildId })
         if (!data) return
         const channel = message.guild.channels.cache.get(data.config?.channels?.livechat ?? '')

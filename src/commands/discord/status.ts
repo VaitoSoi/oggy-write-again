@@ -52,20 +52,15 @@ export default new SlashCommandBuilder()
                                 `**Player list**:\n` +
                                 res.players.sample?.map(obj => `> ${obj.name.replace(/§[0-9|a-z]/, '')}`).join('\n') + '\n',
                             inline: true
+                        },
+                        {
+                            name: 'MOTD',
+                            value: res.motd.clean,
+                            inline: false
                         }
                     )
                     .setColor(interaction.guild?.members.me?.displayColor ?? 'Random')
                     .setThumbnail(`https://api.mcstatus.io/v2/icon/${res.srvRecord?.host ?? ip}`)
-                if (client?.bot?.player) embed.addFields(
-                    {
-                        name: 'Ingame Information',
-                        value: 
-                            `**TPS:** ${(<any>client.bot).getTps() ?? 'unknown'}\n` +
-                            `**Ping:** ${client.bot.player.ping}`,
-                            inline: true
-                    }
-                )
-                embed.addFields({ name: 'MOTD', value: res.motd.clean, inline: false })
                 void interaction.editReply({
                     embeds: [embed]
                 })

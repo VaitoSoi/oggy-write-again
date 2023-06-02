@@ -10,7 +10,8 @@
     "start": "node --loader ts-node/esm index.ts"
   },
   "dependencies": {
-    "discord.js": "^14.9.0",
+    "ascii-table": "^0.0.9",
+    "discord.js": "^14.11.0",
     "dotenv": "^16.0.3",
     "minecraft-server-util": "^5.4.2",
     "mineflayer": "^4.8.1",

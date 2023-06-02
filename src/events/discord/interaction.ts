@@ -1,5 +1,7 @@
-import { Interaction, Events, InteractionType, ChannelType, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js'
+import { Interaction, Events, InteractionType, ChannelType, EmbedBuilder, ChatInputCommandInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js'
 import { EventBuilder } from '../../index'
+import { status, JavaStatusOptions } from 'minecraft-server-util'
+import ms from 'ms'
 
 export default new EventBuilder()
     .setName(Events.InteractionCreate)
@@ -58,5 +60,94 @@ export default new EventBuilder()
             if (cmd) Promise.resolve(cmd.autocompleteRun)
                 .then(async func => await func(interaction, config))
                 .catch(console.error)
-        } //else console.log(interaction)
+        } else if (interaction.type == InteractionType.MessageComponent) {
+            if (interaction.isButton())
+                switch (interaction.customId) {
+                    case 'update_status':
+                        const embed = new EmbedBuilder()
+                            .setAuthor({
+                                name: `${interaction.client.user.tag} Server Utils`,
+                                iconURL: interaction.client.user.displayAvatarURL()
+                            })
+                            .setTitle('Minecraft Server Status')
+                            .setTimestamp()
+                            .setFooter({
+                                text: `OggyTheCode ${config?.package.version ?? 'v1.0.0'}`,
+                                iconURL: `https://github.com/${config?.package.github ?? 'vaitosoi'}.png`
+                            })
+                        const ip: string = config?.config.minecraft.server.ip ?? 'hypixel.com'
+                        const port: number = Number(config?.config.minecraft.server.port) ?? 25565
+                        const statusConfig: JavaStatusOptions = { enableSRV: true }
+                        const row: ActionRowBuilder<ButtonBuilder> = new ActionRowBuilder<ButtonBuilder>()
+                            .addComponents(
+                                new ButtonBuilder()
+                                    .setCustomId('update_status')
+                                    .setDisabled(false)
+                                    .setEmoji('⛏')
+                                    .setLabel('Update Infomation')
+                                    .setStyle(ButtonStyle.Secondary)
+                            )
+                        Promise.resolve(status(ip, port, statusConfig))
+                            .then(async (res) => {
+                                embed
+                                    .setDescription(
+                                        `**Status:** 🟢 Online\n`
+                                    )
+                                    .addFields(
+                                        {
+                                            name: 'Server Information',
+                                            value:
+                                                `**IP:** ${res.srvRecord?.host ?? ip}\n` +
+                                                `**Port:** ${res.srvRecord?.port ?? port}\n` +
+                                                `**Version:** ${res.version.name.replace(/§[0-9|a-z]/gi, '')}\n` +
+                                                `**Protocol:** ${res.version.protocol}\n`,
+                                            inline: true
+                                        },
+                                        {
+                                            name: 'Player Information',
+                                            value:
+                                                `**Online:** ${res.players.online}/${res.players.max} players\n` +
+                                                `**Player list**:\n` +
+                                                res.players.sample?.map(obj => `> ${obj.name.replace(/§[0-9|a-z]/gi, '')}`).join('\n') + '\n',
+                                            inline: true
+                                        }
+                                    )
+                                    .setColor(interaction.guild?.members.me?.displayColor ?? 'Random')
+                                    .setThumbnail(`https://api.mcstatus.io/v2/icon/${res.srvRecord?.host ?? ip}`)
+                                if (config?.bot?.player) embed.addFields(
+                                    {
+                                        name: 'Ingame Information',
+                                        value:
+                                            `**TPS:** ${(<any>config.bot).getTps() ?? 'unknown'}\n` +
+                                            `**Ping:** ${config.bot.player.ping ?? '100'}ms`,
+                                        inline: true
+                                    }
+                                )
+                                embed.addFields({ name: 'MOTD', value: res.motd.clean, inline: false })
+                                return void interaction.update({
+                                    embeds: [embed],
+                                    components: [row]
+                                })
+                                    .catch(console.error)
+                            })
+                            .catch(err =>
+                                void interaction.update({
+                                    embeds: [
+                                        embed
+                                            .setDescription(
+                                                `**Server:** ${ip}:${port}\n` +
+                                                `**Status:** 🔴 Offline\n` +
+                                                `**Gặp lỗi khi lấy thông tin về server:**\n` +
+                                                `\`\`\`${err}\`\`\`\n` +
+                                                `Vui lòng thử lại sau`
+                                            )
+                                            .setColor('Red')
+                                    ],
+                                    components: [row]
+                                })
+                                    .catch(console.error)
+                            )
+                        break
+                }
+        }
     })
