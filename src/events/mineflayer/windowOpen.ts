@@ -6,7 +6,6 @@ export default new EventBuilder()
     .setName(MineflayerEvents.WindowOpen)
     .setOnce(false)
     .setRun(async function (client, window: Window.Window) {
-        /*
         switch (window.slots.length) {
             case 46:
                 const pins = client.config.minecraft.ingame.pin.split(' ').map(Number)
@@ -26,5 +25,4 @@ export default new EventBuilder()
                     .setColor('Green')
                 )
         }
-        */
     })

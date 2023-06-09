@@ -6,8 +6,9 @@ import _package from '../package.json';
 import ms from 'ms'
 
 // Import Mineflayer plugins
-import afk from './modules/afk'
-import tps from './modules/tps'
+import afk from './plugins/default/afk'
+import tps from './plugins/default/tps'
+import custom_bot from './plugins/default/custom_bot'
 
 // Import handler modules
 import eventsHandler from './handlers/events'
@@ -31,7 +32,11 @@ interface Data {
     loginAt: number;
     currentCluster: number;
     lastMsg: number;
-    // PinRetry: number;
+    statusInterval: any
+}
+interface Plugins {
+    mineflayer: Discord.Collection<string, (oggy: Oggy) => Callback<any>>,
+    discord: Discord.Collection<string, (oggy: Oggy) => Callback<any>>,
 }
 export class Oggy {
     config: ENV | YAML;
@@ -41,7 +46,8 @@ export class Oggy {
     package: Package;
     data: Data
     commands: Discord.Collection<string, SlashCommandBuilder | SlashCommandBuilderWithData>;
-    commandsJson: Array<Discord.RESTPostAPIChatInputApplicationCommandsJSONBody>
+    commandsJson: Array<Discord.RESTPostAPIChatInputApplicationCommandsJSONBody>;
+    plugins: Plugins;
     constructor(config: ENV | YAML) {
         this.config = config
         this.commands = new Discord.Collection()
@@ -51,7 +57,11 @@ export class Oggy {
             loginAt: 0,
             currentCluster: 0,
             lastMsg: Date.now(),
-            // PinRetry: 0
+            statusInterval: 0
+        }
+        this.plugins = {
+            mineflayer: new Discord.Collection(),
+            discord: new Discord.Collection(),
         }
         const clientConfig = {
             intents: [
@@ -76,7 +86,7 @@ export class Oggy {
         this.#discord_login(this.client_1, this.config.discord.token.client_1)
         if (this.config.discord.token.client_2)
             this.#discord_login(this.client_2, this.config.discord.token.client_2)
-        // this.minecraft_start()
+        this.minecraft_start()
     }
     #discord_login(client: Discord.Client, token: string): void {
         client.login(token)
@@ -93,6 +103,7 @@ export class Oggy {
                 { body: this.commandsJson },
             );
             console.log(`[DISCORD.JS] [${client.user.tag}] Registered ${(<Array<Discord.RESTPostAPIChatInputApplicationCommandsJSONBody>>data).length ?? 0}/${this.commandsJson.length} application (/) commands.`);
+            this.#startStatusInterval(client)
         })
     }
     minecraft_start(): void {
@@ -106,9 +117,9 @@ export class Oggy {
         }
         this.bot = Mineflayer.createBot(option)
         eventsHandler({ bot: this.bot, mode: EventHandlerMode.Mineflayer, oggy: this })
+        custom_bot(this.bot, this)
         this.bot.loadPlugins([afk, tps]);
         this.bot.once('spawn', () => {
-            // console.log(`[MINEFLAYER] [${this.bot?.username}] Spawned`)
             this.data.loginAt = Date.now()
             this.data.currentCluster = -1
         });
@@ -119,7 +130,35 @@ export class Oggy {
             )
         );
     }
-
+    #startStatusInterval (client: Discord.Client<true>): void {
+        const type = this.config.status.type
+        switch (type) {
+            case 'discord':
+                let i = 0;
+                this.data.statusInterval = setInterval(() => {
+                    const activity_arr = this.config.status.discord.text;
+                    const activity = activity_arr[i];
+                    const status: Discord.PresenceStatusData = this.config.status.discord.status;
+                    client.user.setPresence({ activities: [{ name: activity }], status })
+                    i++
+                    if (i >= activity_arr.length) i = 0
+                }, this.config.status.updateInterval)
+                break;
+            case 'minecraft':
+                this.data.statusInterval = setInterval(() => {
+                    if (!this.bot)
+                        client.user.setPresence({ activities: [{ name: 'Bot is offline...' }], status: this.config.status.minecraft.disconnect })
+                    else {
+                        const tps = (<any>this.bot).getTps()
+                        const ping = this.bot.player.ping
+                        const players = Object.keys(this.bot.players).length
+                        const status = this.config.status.minecraft.connect
+                        client.user.setPresence({ activities: [{ name: `TPS: ${tps} | ${ping}ms | ${players} players` }], status })
+                    }
+                }, this.config.status.updateInterval)
+                break;
+        }
+    }
 }
 
 /*
@@ -145,26 +184,26 @@ export interface Bot extends Mineflayer.Bot {
 
 export type CommandInteraction = Discord.ChatInputCommandInteraction
 export class SlashCommandBuilder extends Discord.SlashCommandBuilder {
-    run: (interaction: CommandInteraction, client?: Oggy) => Callback<void | any>
-    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client?: Oggy) => Callback<void | any>
+    run: (interaction: CommandInteraction, client: Oggy) => Callback<void | any>
+    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client: Oggy) => Callback<void | any>
     constructor() {
         super()
         this.setName('name')
         this.setDescription('description')
         this.setDMPermission(false)
     }
-    setRun(run: (interaction: CommandInteraction, client?: Oggy) => Callback<void | any>) { this.run = run; return this; }
-    setAutocompleteRun(run: (interaction: Discord.AutocompleteInteraction, client?: Oggy) => Callback<void | any>) { this.autocompleteRun = run; return this; }
+    setRun(run: (interaction: CommandInteraction, client: Oggy) => Callback<void | any>) { this.run = run; return this; }
+    setAutocompleteRun(run: (interaction: Discord.AutocompleteInteraction, client: Oggy) => Callback<void | any>) { this.autocompleteRun = run; return this; }
 }
 interface SlashCommandBuilderWithDataOption {
     data: Discord.SlashCommandBuilder | Discord.SlashCommandSubcommandsOnlyBuilder
-    run: (interaction: CommandInteraction, client?: Oggy) => Callback<void | any>
-    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client?: Oggy) => Callback<void | any>
+    run: (interaction: CommandInteraction, client: Oggy) => Callback<void | any>
+    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client: Oggy) => Callback<void | any>
 }
 export class SlashCommandBuilderWithData {
     data: Discord.SlashCommandBuilder | Discord.SlashCommandSubcommandsOnlyBuilder
-    run: (interaction: CommandInteraction, client?: Oggy) => Callback<void | any>
-    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client?: Oggy) => Callback<void | any>
+    run: (interaction: CommandInteraction, client: Oggy) => Callback<void | any>
+    autocompleteRun: (interaction: Discord.AutocompleteInteraction, client: Oggy) => Callback<void | any>
     constructor(config?: SlashCommandBuilderWithDataOption) {
         this.data = config?.data ?? new SlashCommandBuilder()
         this.data.setDMPermission(false)
@@ -175,11 +214,11 @@ export class SlashCommandBuilderWithData {
         this.data = data
         return this
     }
-    setRun(run: (interaction: CommandInteraction, client?: Oggy) => Callback<void | any>) {
+    setRun(run: (interaction: CommandInteraction, client: Oggy) => Callback<void | any>) {
         this.run = run
         return this
     }
-    setAutocompleteRun(run: (interaction: Discord.AutocompleteInteraction, client?: Oggy) => Callback<void | any>) {
+    setAutocompleteRun(run: (interaction: Discord.AutocompleteInteraction, client: Oggy) => Callback<void | any>) {
         this.autocompleteRun = run
         return this
     }
@@ -229,7 +268,7 @@ interface CompilerCommandOption {
 export class CompilerCommandBuilder {
     name: string;
     run: (...args: any[]) => Callback<any>
-    constructor (option?: CompilerCommandOption) {
+    constructor(option?: CompilerCommandOption) {
         this.name = option?.name || 'command'
         this.run = option?.run || function () { }
     }
@@ -411,15 +450,15 @@ interface MinecraftConfig {
     }
 }
 interface StatusConfig {
-    type: string;
+    type: 'discord' | 'minecraft';
     updateInterval: number;
     discord: {
-        text: string;
-        status: string | Discord.PresenceUpdateStatus;
+        text: string[];
+        status: Discord.PresenceStatusData;
     };
     minecraft: {
-        connect: string | Discord.PresenceUpdateStatus;
-        disconnect: string | Discord.PresenceUpdateStatus;
+        connect: Discord.PresenceStatusData;
+        disconnect: Discord.PresenceStatusData;
     };
 }
 interface DatabaseConfig {
@@ -475,8 +514,7 @@ export class ENV {
             type: env.STATUS_TYPE ?? 'discord',
             updateInterval: !!env.STATUS_UPDATEINTERVAL ? (isNaN(env.STATUS_UPDATEINTERVAL)
                 ? ms(<string>env.STATUS_UPDATEINTERVAL)
-                : Number(env.STATUS_UPDATEINTERVAL)
-            ) : 5 * 60 * 1000,
+                : Number(env.STATUS_UPDATEINTERVAL)) : 5 * 60 * 1000,
             discord: {
                 text: (env.STATUS_DISCORD_TEXT?.startsWith('[') && env?.STATUS_DISCORD_TEXT.endsWith(']')
                     ? env.STATUS_DISCORD_TEXT?.slice(1, -1).split(',')
@@ -546,8 +584,7 @@ export class YAML {
             type: yaml.status.type ?? 'discord',
             updateInterval: !!yaml.status.updateInterval ? (isNaN(yaml.status.updateInterval)
                 ? ms(<string>yaml.status.updateInterval)
-                : Number(yaml.status.updateInterval)
-            ) : 5 * 60 * 1000,
+                : Number(yaml.status.updateInterval)) : 5 * 60 * 1000,
             discord: {
                 text: yaml.status.discord.text ?? [`OggyTheCode ${_package.version}`],
                 status: yaml.status.discord.status ?? Discord.PresenceUpdateStatus.Online

@@ -9,8 +9,10 @@ export default new EventBuilder()
     .setRun(async function (client, message: string) {
         // console.log(message)
         const normalChat = /^<(.+)>$/
-        const whisperSend = /^nhắn cho (.+): (.+)$/
-        const whisperReceive = /^(.+) nhắn: $(.+)$/
+        const whisperSendVi = /^nhắn cho (.+): (.+)$/
+        const whisperSendEN = /^You whisper to (.+): (.+)$/
+        const whisperReceiveVi = /^(.+) nhắn: $(.+)$/
+        const whisperReceiveEN = /^(.+) whispers to you: $(.+)$/
         const embed = new EmbedBuilder()
             .setFooter({
                 text: `OggyTheCode ${client.package.version}`,
@@ -28,7 +30,7 @@ export default new EventBuilder()
                 })
                 .setDescription(content.startsWith('>') ? `\\${content}` : content)
                 .setColor('Blue')
-        } else if (whisperSend.test(message))
+        } else if (whisperSendVi.test(message) || whisperSendEN.test(message))
             embed
                 .setAuthor({
                     name: client.bot?.username ?? 'Oggy',
@@ -36,8 +38,8 @@ export default new EventBuilder()
                 })
                 .setDescription(message)
                 .setColor('LuminousVividPink')
-        else if (whisperReceive.test(message)) {
-            const name = (whisperReceive.exec(message) ?? ['', 'Oggy'])[1]
+        else if (whisperReceiveVi.test(message) || whisperReceiveVi.test(message)) {
+            const name = ((whisperReceiveVi.test(message) ? whisperReceiveVi.exec(message) : whisperReceiveEN.exec(message)) ?? ['', 'Oggy'])[1]
             embed
                 .setAuthor({
                     name,
@@ -67,7 +69,6 @@ export default new EventBuilder()
             }
         }
         sendMessage(client, embed)
-        return
         if (message.trim().toLowerCase() == 'dùng lệnh/anarchyvn  để vào server.') {
             await wait(1000).catch(e => { })
             client.bot?.chat('/anarchyvn');

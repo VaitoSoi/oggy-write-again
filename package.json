@@ -1,6 +1,6 @@
 {
   "name": "oggy-write-again",
-  "version": "beta-3.0.0",
+  "version": "3.0.0",
   "main": "index.ts",
   "repository": "https://github.com/VaitoSoi/oggy-write-again.git",
   "author": "VaitoSoi#2220",
@@ -10,7 +10,7 @@
     "start": "node --loader ts-node/esm index.ts"
   },
   "dependencies": {
-    "ascii-table": "^0.0.9",
+    "ascii-table3": "^0.8.2",
     "discord.js": "^14.11.0",
     "dotenv": "^16.0.3",
     "minecraft-server-util": "^5.4.2",
