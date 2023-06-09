@@ -1,5 +1,7 @@
 import { SlashCommandBuilder } from "../../index";
 import util from 'node:util'
+import Discord from 'discord.js'
+import option from '../../database/option'
 
 export default new SlashCommandBuilder()
     .setName('eval')

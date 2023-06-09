@@ -18,20 +18,20 @@ export default new SlashCommandBuilder()
         const dataChnanels = (await option.findOne({ guildid: interaction.guildId }))?.config?.channels
         const livechatChannel: any = channels?.get(dataChnanels?.livechat ?? '')
         const statusChannel: any = channels?.get(dataChnanels?.status ?? '')
-        const livechatSendMessages = livechatChannel ? undefined : me?.permissionsIn(livechatChannel)?.has(Flags.SendMessages)
-        const livechatEmbedLinks = livechatChannel ? undefined : me?.permissionsIn(livechatChannel)?.has(Flags.EmbedLinks)
-        const statusSendMessages = statusChannel ? undefined : me?.permissionsIn(statusChannel)?.has(Flags.SendMessages)
-        const statusEmbedLinks = statusChannel ? undefined : me?.permissionsIn(statusChannel)?.has(Flags.EmbedLinks)
+        const livechatSendMessages = !livechatChannel ? undefined : me?.permissionsIn(livechatChannel)?.has(Flags.SendMessages)
+        const livechatEmbedLinks = !livechatChannel ? undefined : me?.permissionsIn(livechatChannel)?.has(Flags.EmbedLinks)
+        const statusSendMessages = !statusChannel ? undefined : me?.permissionsIn(statusChannel)?.has(Flags.SendMessages)
+        const statusEmbedLinks = !statusChannel ? undefined : me?.permissionsIn(statusChannel)?.has(Flags.EmbedLinks)
 
         const status = (status: any): string => !!status ? '✅' : '❌'
 
         interaction.editReply(
-            'Các quyền tại máy chủ:\n' +
+            '**Các quyền tại máy chủ:**\n' +
             `> Nhìn thấy các kênh (View Channels): ${status(guildViewChannels)}\n` +
             `> Gửi tin nhắn (Send Messages): ${status(guildSendMessages)}\n` +
             `> Nhúng liên kết (Embeds Link): ${status(guildEmbedLinks)}\n` +
             `> Quản lý kênh (Manage Channels) (Không cần thiết): ${status(guildManageChannels)}\n` +
-            'Các quyền tại kênh Livechat:\n' +
+            '**Các quyền tại kênh Livechat:**\n' +
             (
                 livechatChannel
                     ?
@@ -39,7 +39,7 @@ export default new SlashCommandBuilder()
                     `> Nhúng liên kết (Embeds Link): ${status(livechatEmbedLinks)}\n`
                     : '> Chưa cài đặt kênh Livechat\n'
             ) +
-            'Các quyền tại kênh Status:\n' +
+            '**Các quyền tại kênh Status:**\n' +
             (
                 statusChannel
                     ?

@@ -4,6 +4,7 @@ import * as Mineflayer from 'mineflayer'
 import mongoose from 'mongoose'
 import _package from '../package.json';
 import ms from 'ms'
+import express from './web/index'
 
 // Import Mineflayer plugins
 import afk from './plugins/default/afk'
@@ -32,7 +33,10 @@ interface Data {
     loginAt: number;
     currentCluster: number;
     lastMsg: number;
-    statusInterval: any
+    statusInterval: {
+        client_1: any
+        client_2: any
+    }
 }
 interface Plugins {
     mineflayer: Discord.Collection<string, (oggy: Oggy) => Callback<any>>,
@@ -48,6 +52,7 @@ export class Oggy {
     commands: Discord.Collection<string, SlashCommandBuilder | SlashCommandBuilderWithData>;
     commandsJson: Array<Discord.RESTPostAPIChatInputApplicationCommandsJSONBody>;
     plugins: Plugins;
+    express: express
     constructor(config: ENV | YAML) {
         this.config = config
         this.commands = new Discord.Collection()
@@ -57,7 +62,10 @@ export class Oggy {
             loginAt: 0,
             currentCluster: 0,
             lastMsg: Date.now(),
-            statusInterval: 0
+            statusInterval: {
+                client_1: 0,
+                client_2: 0
+            }
         }
         this.plugins = {
             mineflayer: new Discord.Collection(),
@@ -75,6 +83,7 @@ export class Oggy {
         this.client_1 = new Discord.Client(clientConfig)
         this.client_2 = new Discord.Client(clientConfig);
         (async () => await mongoose.connect(this.config.database.link))()
+        this.express = new express(this)
     };
     setConfig(config: ENV | YAML): Oggy {
         this.config = config;
@@ -83,12 +92,13 @@ export class Oggy {
     async start(): Promise<void> {
         process.on('rejectionHandled', (error) => console.error(error))
         await commandHandler(this)
-        this.discord_login(this.client_1, this.config.discord.token.client_1)
+        this.discord_login(this.client_1, this.config.discord.token.client_1, 1)
         if (this.config.discord.token.client_2)
-            this.discord_login(this.client_2, this.config.discord.token.client_2)
+            this.discord_login(this.client_2, this.config.discord.token.client_2, 2)
         this.minecraft_start()
+        this.express.listen(this.config.express.port)
     }
-    private discord_login(client: Discord.Client, token: string): void {
+    private discord_login(client: Discord.Client, token: string, type: number = 1): void {
         client.login(token)
             .then(() => console.log(`[DISCORD.JS] [${client?.user?.tag}] Logined`))
             .catch(console.error)
@@ -103,7 +113,7 @@ export class Oggy {
                 { body: this.commandsJson },
             );
             console.log(`[DISCORD.JS] [${client.user.tag}] Registered ${(<Array<Discord.RESTPostAPIChatInputApplicationCommandsJSONBody>>data).length ?? 0}/${this.commandsJson.length} application (/) commands.`);
-            this.startStatusInterval(client)
+            this.startStatusInterval(client, type)
         })
     }
     public minecraft_start(): void {
@@ -130,12 +140,13 @@ export class Oggy {
             )
         );
     }
-    private startStatusInterval (client: Discord.Client<true>): void {
+    private startStatusInterval (client: Discord.Client<true>, client_enum: number = 1): void {
+        clearInterval(this.data.statusInterval[client_enum == 1 ? 'client_1' : 'client_2'])
         const type = this.config.status.type
         switch (type) {
             case 'discord':
                 let i = 0;
-                this.data.statusInterval = setInterval(() => {
+                this.data.statusInterval[client_enum == 1 ? 'client_1' : 'client_2'] = setInterval(() => {
                     const activity_arr = this.config.status.discord.text;
                     const activity = activity_arr[i];
                     const status: Discord.PresenceStatusData = this.config.status.discord.status;
@@ -145,7 +156,7 @@ export class Oggy {
                 }, this.config.status.updateInterval)
                 break;
             case 'minecraft':
-                this.data.statusInterval = setInterval(() => {
+                this.data.statusInterval[client_enum == 1 ? 'client_1' : 'client_2'] = setInterval(() => {
                     if (!this.bot)
                         client.user.setPresence({ activities: [{ name: 'Bot is offline...' }], status: this.config.status.minecraft.disconnect })
                     else {
@@ -464,13 +475,17 @@ interface StatusConfig {
 interface DatabaseConfig {
     link: string;
 }
+interface ExpressConfig {
+    port: number
+}
 export class ENV {
     readonly discord: DiscordConfig
     readonly minecraft: MinecraftConfig
     readonly status: StatusConfig
     readonly database: DatabaseConfig
+    readonly express: ExpressConfig
     constructor(env: any) {
-        const discord: DiscordConfig = {
+        this.discord = {
             token: {
                 client_1: env.DISCORD_TOKEN_1 ?? '',
                 client_2: env.DISCORD_TOKEN_2 ?? '',
@@ -487,7 +502,7 @@ export class ENV {
                 id: env.DISCORD_OWNER_ID ?? ''
             }
         }
-        const minecraft: MinecraftConfig = {
+        this.minecraft = {
             account: {
                 username: env.MINECRAFT_ACCOUNT_USERNAME ?? 'player',
                 password: env.MINECRAFT_ACCOUNT_PASSWORD ?? '',
@@ -510,7 +525,7 @@ export class ENV {
                     : Number(env.MINECRAFT_SERVER_CHATTIMEOUT)) : 5 * 60 * 1000
             }
         }
-        const status: StatusConfig = {
+        this.status = {
             type: env.STATUS_TYPE ?? 'discord',
             updateInterval: !!env.STATUS_UPDATEINTERVAL ? (isNaN(env.STATUS_UPDATEINTERVAL)
                 ? ms(<string>env.STATUS_UPDATEINTERVAL)
@@ -526,13 +541,12 @@ export class ENV {
                 connect: env.STATUS_MINECRAFT_CONNECT ?? Discord.PresenceUpdateStatus.DoNotDisturb
             }
         }
-        const database: DatabaseConfig = {
+        this.database = {
             link: env.DATABASE_LINK
         }
-        this.discord = discord;
-        this.minecraft = minecraft;
-        this.status = status
-        this.database = database
+        this.express = {
+            port: env.EXPRESS_PORT ?? 8000
+        }
     }
 }
 
@@ -541,8 +555,9 @@ export class YAML {
     readonly minecraft: MinecraftConfig
     readonly status: StatusConfig
     readonly database: DatabaseConfig
+    readonly express: ExpressConfig
     constructor(yaml: any) {
-        const discord: DiscordConfig = {
+        this.discord = {
             token: {
                 client_1: yaml.discord.token_1 ?? '',
                 client_2: yaml.discord.token_2 ?? '',
@@ -557,7 +572,7 @@ export class YAML {
                 id: yaml.discord.owner.id ?? ''
             }
         }
-        const minecraft: MinecraftConfig = {
+        this.minecraft = {
             account: {
                 username: yaml.minecraft.account.username ?? 'player',
                 password: yaml.minecraft.account.password ?? '',
@@ -580,7 +595,7 @@ export class YAML {
                     : Number(yaml.minecraft.server.chatTimeout)) : 5 * 60 * 1000
             }
         }
-        const status: StatusConfig = {
+        this.status = {
             type: yaml.status.type ?? 'discord',
             updateInterval: !!yaml.status.updateInterval ? (isNaN(yaml.status.updateInterval)
                 ? ms(<string>yaml.status.updateInterval)
@@ -594,12 +609,11 @@ export class YAML {
                 connect: yaml.status.minecraft.connect ?? Discord.PresenceUpdateStatus.DoNotDisturb
             }
         }
-        const database: DatabaseConfig = {
+        this.database = {
             link: yaml.database.link ?? ''
         }
-        this.discord = discord;
-        this.minecraft = minecraft;
-        this.status = status
-        this.database = database
+        this.express = {
+            port: yaml.express.port ?? 8000
+        }
     }
 }

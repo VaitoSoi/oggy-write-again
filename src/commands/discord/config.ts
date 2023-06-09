@@ -275,11 +275,11 @@ export default new SlashCommandBuilderWithData()
                                     {
                                         name: 'Các giá trị',
                                         value:
-                                            data.guildid + '\n' +
-                                            data.guildname + '\n' +
-                                            (data.config?.channels?.livechat || 'undefined') + '\n' +
-                                            (data.config?.channels?.status || 'undefined') + '\n' +
-                                            (data.config?.channels?.restart || 'undefined'),
+                                            `${data.guildid}\n`+
+                                            `${data.guildname}\n` +
+                                            `<#${data.config?.channels?.livechat || 'undefined'}> (${data.config?.channels?.livechat || 'undefined'})\n` +
+                                            `<#${data.config?.channels?.status || 'undefined'}> (${data.config?.channels?.status || 'undefined'})\n` +
+                                            `<#${data.config?.channels?.restart || 'undefined'}> (${data.config?.channels?.restart || 'undefined'})\n`,
                                         inline: true
                                     }
                                 )

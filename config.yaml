@@ -67,3 +67,7 @@ status:
 # Lưu ý: Hiện tại chỉ hỗ trợ MongoDB
 database:
   link: # URL để kết nối với database
+
+# Không cần quan tâm đâu :v
+express:
+  port: 8000
