@@ -83,12 +83,12 @@ export class Oggy {
     async start(): Promise<void> {
         process.on('rejectionHandled', (error) => console.error(error))
         await commandHandler(this)
-        this.#discord_login(this.client_1, this.config.discord.token.client_1)
+        this.discord_login(this.client_1, this.config.discord.token.client_1)
         if (this.config.discord.token.client_2)
-            this.#discord_login(this.client_2, this.config.discord.token.client_2)
+            this.discord_login(this.client_2, this.config.discord.token.client_2)
         this.minecraft_start()
     }
-    #discord_login(client: Discord.Client, token: string): void {
+    private discord_login(client: Discord.Client, token: string): void {
         client.login(token)
             .then(() => console.log(`[DISCORD.JS] [${client?.user?.tag}] Logined`))
             .catch(console.error)
@@ -103,10 +103,10 @@ export class Oggy {
                 { body: this.commandsJson },
             );
             console.log(`[DISCORD.JS] [${client.user.tag}] Registered ${(<Array<Discord.RESTPostAPIChatInputApplicationCommandsJSONBody>>data).length ?? 0}/${this.commandsJson.length} application (/) commands.`);
-            this.#startStatusInterval(client)
+            this.startStatusInterval(client)
         })
     }
-    minecraft_start(): void {
+    public minecraft_start(): void {
         this.bot?.end()
         const option: Mineflayer.BotOptions = {
             username: this.config.minecraft.account.username,
@@ -130,7 +130,7 @@ export class Oggy {
             )
         );
     }
-    #startStatusInterval (client: Discord.Client<true>): void {
+    private startStatusInterval (client: Discord.Client<true>): void {
         const type = this.config.status.type
         switch (type) {
             case 'discord':
