@@ -285,25 +285,6 @@ export class MineflayerCommandBuilder {
     };
 }
 
-interface CompilerCommandOption {
-    name: string;
-    run: (...args: any[]) => Callback<any>
-}
-export class CompilerCommandBuilder {
-    name: string;
-    run: (...args: any[]) => Callback<any>
-    constructor(option?: CompilerCommandOption) {
-        this.name = option?.name || 'command'
-        this.run = option?.run || function () { }
-    }
-    setName(name: string) {
-        this.name = name; return this;
-    };
-    setRun(run: (...args: any[]) => Callback<any>) {
-        this.run = run; return this
-    }
-}
-
 
 /*
  * Event Builder
@@ -506,6 +487,7 @@ interface DevoloperConfig {
     handlerPath: {
         events: DefaultPath
         commands: DefaultPath
+        compiler: { commands: fs.PathLike }
     },
     plugins: string[],
     customScript: fs.PathLike
@@ -592,7 +574,8 @@ export class ENV {
                 events: {
                     discord: env.DEVELOPER_HANDLERPATH_EVENTS_DISCORD ?? 'src/events/discord',
                     mineflayer: env.DEVELOPER_HANDLERPATH_EVENTS_MINEFLAYER ?? 'src/events/mineflayer'
-                }
+                },
+                compiler: env.DEVELOPER_HANDLERPATH_COMPILER_COMMANDS ?? 'src/compiler/commands'
             },
             plugins: (env.DEVELOPER_PLUGINS?.startsWith('[') && env?.DEVELOPER_PLUGINS.endsWith(']')
                 ? <string[]>JSON.parse(env.DEVELOPER_PLUGINS)
@@ -680,7 +663,8 @@ export class YAML {
                 events: {
                     discord: yaml.developer.handlerPath.events.discord ?? 'src/events/discord',
                     mineflayer: yaml.developer.handlerPath.events.mineflayer ?? 'src/events/mineflayer'
-                }
+                },
+                compiler: yaml.developer.handlerPath.compiler.commands ?? 'src/compiler/commands'
             },
             plugins: (yaml.developer.plugins?.startsWith('[') && yaml?.developer.plugins.endsWith(']')
                 ? <string[]>JSON.parse(yaml.developer.plugins)
