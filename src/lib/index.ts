@@ -2,19 +2,19 @@
 import Discord from 'discord.js'
 import * as Mineflayer from 'mineflayer'
 import mongoose from 'mongoose'
-import _package from '../package.json';
+import _package from '../../package.json';
 import ms from 'ms'
-import express from './web/index'
+import express from '../web/index'
 import fs from 'fs'
 
 // Import Mineflayer plugins
-import afk from './plugins/default/afk'
-import tps from './plugins/default/tps'
-import custom_bot from './plugins/default/custom_bot'
+import afk from '../plugins/default/afk'
+import tps from '../plugins/default/tps'
+import custom_bot from '../plugins/default/custom_bot'
 
 // Import handler modules
-import { DiscordEventsHandler, MineflayerEventsHandler } from './handlers/events'
-import { DiscordCommandHandler, MineflayerCommandHandler } from './handlers/command'
+import { DiscordEventsHandler, MineflayerEventsHandler } from '../handlers/events'
+import { DiscordCommandHandler, MineflayerCommandHandler } from '../handlers/command'
 
 
 /*

@@ -1,4 +1,4 @@
-import { Oggy } from '..'
+import { Oggy } from '../lib'
 import { readdirSync } from 'fs'
 import { Collection } from 'discord.js'
 
