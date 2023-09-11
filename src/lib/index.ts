@@ -199,6 +199,6 @@ export class Oggy {
             else if (command instanceof SlashCommandBuilderWithData) this.commands.discord.jsonArray.push(command.data.toJSON())
         }
 
-        this.logger.info(`[${mode.toUpperCase()}] Handled ${this.commands[mode].collections.size} command(s)`)
+        this.logger.info(`[${mode.toUpperCase()}] Handled ${this.commands[mode].collections.size} command(s) ${mode == 'discord' ? `(JSON Array: ${this.commands.discord.jsonArray.length})` : ''}`)
     }
 }
